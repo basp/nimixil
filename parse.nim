@@ -1,7 +1,7 @@
 import math, strutils, tables, scan
 
 type
-  Operator = enum
+  Operator* = enum
     opInt,
     opBool,
     opChar,
@@ -9,8 +9,8 @@ type
     opString,
     opList,
     opIdent
-  Factor = object
-    case op: Operator
+  Factor* = object
+    case op*: Operator
     of opBool: b: bool
     of opInt: i: int
     of opChar: c: char
@@ -70,7 +70,7 @@ proc parseIdent(p: Parser): Factor =
 proc parseChar(p: Parser): Factor =
   # TODO:
   # fancier string to char conversion;
-  # this assumes basic char literals like 'c'
+  # this assumes char literals like 'c'
   proc convert(s: string): char = s[1]
   let c = convert(p.curTok.lexeme)
   result = initChar(c)
@@ -109,11 +109,10 @@ proc parseFactor(p: Parser): Factor
 
 proc parseList(p: Parser): Factor =
   var terms : seq[Factor] = @[]
-  p.advance() # skip over [
+  p.advance()
   while p.curTok.kind != tkRBrack:
     let fac = p.parseFactor()
     terms.add(fac)
-  # throw on unterminated?
   if p.curTok.kind == tkRBrack:
     p.advance()
   return initList(terms)
@@ -125,7 +124,11 @@ proc parseFactor(p: Parser): Factor =
   of tkChar: p.parseChar()
   of tkString: p.parseString()
   of tkIdent: p.parseIdent()
-  else: raise newException(Exception, $p.curTok.kind)
+  else: 
+    # this will most likely be caused by
+    # an unterminated literal and it's
+    # highly likely we'll be hitting tkEOF
+    raise newException(Exception, $p.curTok.kind)
 
 proc parseTerm*(p: Parser): seq[Factor] =
   result = @[]
