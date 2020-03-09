@@ -11,37 +11,37 @@ type
     opIdent
   Factor* = object
     case op*: Operator
-    of opBool: b: bool
-    of opInt: i: int
-    of opChar: c: char
-    of opFloat: f: float
-    of opString: s: string
-    of opList: list: seq[Factor]
-    of opIdent: id: string
+    of opBool: b*: bool
+    of opInt: i*: int
+    of opChar: c*: char
+    of opFloat: f*: float
+    of opString: s*: string
+    of opList: list*: seq[Factor]
+    of opIdent: id*: string
   Parser = ref object
     s: Scanner
     curTok: Token
     nextTok: Token
 
-proc initBool(x: bool): Factor =
+proc initBool*(x: bool): Factor =
   Factor(op: opBool, b: x)
 
-proc initInt(x: int): Factor =
+proc initInt*(x: int): Factor =
   Factor(op: opInt, i: x)
 
-proc initFloat(x: float): Factor =
+proc initFloat*(x: float): Factor =
   Factor(op: opFloat, f: x)
 
-proc initChar(x: char): Factor =
+proc initChar*(x: char): Factor =
   Factor(op: opChar, c: x)
 
-proc initString(x: string): Factor =
-  Factor(op: opString, s: x)
+proc initString*(x: string): Factor =
+  Factor(op: opString, s: x[1..<len(x) - 1])
 
-proc initIdent(x: string): Factor =
+proc initIdent*(x: string): Factor =
   Factor(op: opIdent, id: x)
 
-proc initList(x: seq[Factor]): Factor =
+proc initList*(x: seq[Factor]): Factor =
   Factor(op: opList, list: x)
 
 proc advance(p: Parser) =
