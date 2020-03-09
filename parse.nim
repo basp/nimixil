@@ -1,4 +1,4 @@
-import strutils, tables, scan
+import math, strutils, tables, scan
 
 type
   Operator = enum
@@ -53,6 +53,12 @@ reserved.add("true", proc(): Factor =
   initBool(true))
 reserved.add("false", proc(): Factor =
   initBool(false))
+reserved.add("pi", proc(): Factor =
+  initFloat(math.PI))
+reserved.add("tau", proc(): Factor =
+  initFloat(math.TAU))
+reserved.add("e", proc(): Factor =
+  initFloat(math.E))
 
 proc parseIdent(p: Parser): Factor =
   if reserved.hasKey(p.curTok.lexeme):
