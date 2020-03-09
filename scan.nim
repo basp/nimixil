@@ -4,9 +4,8 @@ type
     tkIllegal,
     tkEOF,
     tkIdent,
-    tkInt,
+    tkNumber,
     tkChar,
-    tkFloat,
     tkString,
     tkList,
     tkLBrack,
@@ -15,11 +14,11 @@ type
     tkRBrace,
     tkColon,
     tkSemicolon,
-  Token = object
+  Token* = object
     kind*: TokenKind
     lexeme*: string
     pos*: int
-  Scanner = ref object
+  Scanner* = ref object
     src: string
     pos: int
     readPos: int
@@ -70,6 +69,10 @@ proc readNumber(s: Scanner): string =
   let pos = s.pos
   while isDigit(s.ch):
     s.advance()
+  if s.ch == '.':
+    s.advance()
+  while isDigit(s.ch):
+    s.advance()
   s.src[pos..<s.pos]
 
 proc readUntil(s: Scanner, fin: char): string =
@@ -77,6 +80,10 @@ proc readUntil(s: Scanner, fin: char): string =
   s.advance()
   while s.ch != fin:
     s.advance()
+  # TODO: 
+  # consider raising error on unterminated
+  # string or character literal; for now
+  # we'll be a bit lenient
   if s.ch == fin:
     s.advance()
   s.src[pos..<s.pos]
@@ -108,7 +115,7 @@ proc nextToken*(s: Scanner): Token =
     if isDigit(s.ch):
       result.pos = s.pos
       result.lexeme = s.readNumber()
-      result.kind = tkInt
+      result.kind = tkNumber
     else:
       result.pos = s.pos
       result.lexeme = s.readIdent()
