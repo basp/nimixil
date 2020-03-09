@@ -1,15 +1,7 @@
 import scan
 
-let scanner = newScanner("foo bar")
+let scanner = newScanner("foo '#234' 'c' bar[] bra \"breotz foz\" frotz")
 var tok = scanner.nextToken()
-echo tok.kind
-echo tok.lexeme
-tok = scanner.nextToken()
-echo tok.kind
-echo tok.lexeme
-tok = scanner.nextToken()
-echo tok.kind
-echo tok.lexeme
-tok = scanner.nextToken()
-echo tok.kind
-echo tok.lexeme
+while tok.kind != tkEOF:
+  echo $tok.kind & " " & tok.lexeme & " " & $tok.pos
+  tok = scanner.nextToken()
