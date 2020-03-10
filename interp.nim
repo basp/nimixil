@@ -50,23 +50,23 @@ method logical(x: BoolVal): bool {.inline.} = true
 method list(x: Value): bool {.base,inline.} = false
 method list(x: ListVal): bool {.inline.} = true
 
-template oneParameter(name: string) =
+proc oneParameter(name: string) {.inline.} =
   doAssert stack.head != nil, name
 
-template twoParameters(name: string) =
+proc twoParameters(name: string) {.inline.} =
   oneParameter(name)
   doAssert stack.head.next != nil, name
 
-template integerOrFloat(name: string) =
+proc integerOrFloat(name: string) {.inline.} =
   doAssert stack.head.value.floatable, name
 
-template integerOrFloatAsSecond(name: string) =
+proc integerOrFloatAsSecond(name: string) {.inline.} =
   doAssert stack.head.next.value.floatable, name
 
-template logical(name: string) =
+proc logical(name: string) {.inline.} =
   doAssert stack.head.value.logical, name
 
-template quote(name: string) =
+proc quote(name: string) {.inline.} =
   doAssert stack.head.value.list, name
 
 template unary(op: untyped, name: string) =
