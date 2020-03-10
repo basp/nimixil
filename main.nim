@@ -1,6 +1,7 @@
 import lists, scan, parse, interp, runtime
 
 while true:
+  stdout.write("< ")
   let src = stdin.readLine()
   let scanner = newScanner(src);
   let parser = newParser(scanner)
@@ -8,7 +9,7 @@ while true:
     let term = parser.parseTerm()
     for x in term:
       eval(x)
-    echo "----------"
+    echo "."
     for x in stack:
       echo x
   except Exception:

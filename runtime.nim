@@ -52,7 +52,11 @@ proc newValue*(v: string): StringVal {.inline.} =
 proc newValue*(v: bool): BoolVal {.inline.} =
   BoolVal(value: v)
 
-method `$`*(self: Value): string {.base, inline.} =
+method clone*(self: Value): Value {.base,inline.} =
+  self
+# TODO
+
+method `$`*(self: Value): string {.base,inline.} =
   repr(self)
 method `$`*(self: IntVal): string {.inline.} =
   $self.value

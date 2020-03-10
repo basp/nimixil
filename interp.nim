@@ -1,5 +1,11 @@
 import lists, runtime
 
+const ID = "id"
+const DUP = "dup"
+const SWAP = "swap"
+const ROLLUP = "rollup"
+const ROLLDOWN = "rolldown"
+const ROTATE = "rotate"
 const ADD = "+"
 const SUB = "-"
 const MUL = "*"
@@ -19,9 +25,11 @@ const TAN = "tan"
 const ATAN = "atan"
 const TANH = "tanh"
 const POP = "pop"
+const PEEK = "peek"
 const PUTS = "puts"
 const I = "i"
 const X = "x" 
+const DIP = "dip"
 
 var stack* = initSinglyLinkedList[Value]()
 
@@ -97,6 +105,8 @@ template bifloatop(op: untyped, name: string) =
   integerOrFloatAsSecond(name)
   binary(op, name)
 
+proc opId() {.inline.} = discard
+
 proc opAdd(name: auto) {.inline.} = bifloatop(`+`, name)
 proc opSub(name: auto) {.inline.} = bifloatop(`-`, name)
 proc opMul(name: auto) {.inline.} = bifloatop(`*`, name)
@@ -134,6 +144,9 @@ proc opPuts(name: auto) {.inline.} =
   let x = pop()
   echo x
 
+proc opPeek(name: string) {.inline.} =
+  oneParameter(name)
+  
 proc opI(name: auto) {.inline.} =
   oneParameter(name)
   quote(name)
@@ -146,11 +159,20 @@ proc opX(name: auto) {.inline.} =
   let p = peekt[ListVal]()
   exeterm(p)
 
+proc opDip(name: auto) {.inline.} =
+  twoParameters(name)
+  quote(name)
+  let p = popt[ListVal]()
+  let x = pop()
+  exeterm(p)
+  push(x)
+
 method eval*(x: Value) {.base.} =
   push(x)
 
 method eval*(x: IdentVal) =
   case x.value
+  of ID: opId()
   of ADD: opAdd(ADD)
   of SUB: opSub(SUB)
   of MUL: opMul(MUL)
@@ -169,8 +191,10 @@ method eval*(x: IdentVal) =
   of SINH: opSinh(SINH)
   of COSH: opCosh(COSH)
   of TANH: opTanh(TANH)
-  of PUTS: opPuts(PUTS)
   of I: opI(I)
   of X: opX(X)
+  of DIP: opDip(DIP)
+  of PEEK: opPeek(PEEK)
+  of PUTS: opPuts(PUTS)
   of POP: discard opPop(POP)
   else: discard
