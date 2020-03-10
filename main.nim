@@ -1,4 +1,4 @@
-import lists, scan, parse, interp, vm
+import lists, scan, parse, interp, runtime
 
 while true:
   let src = stdin.readLine()

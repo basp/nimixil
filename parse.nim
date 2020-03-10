@@ -1,4 +1,4 @@
-import math, tables, strutils, scan, vm
+import math, tables, strutils, scan, runtime
 
 type
   Parser = ref object
