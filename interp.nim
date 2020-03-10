@@ -1,78 +1,35 @@
-import lists, parse
+import lists, vm
 
-var stack* = initSinglyLinkedList[Factor]()
+var stack* = initSinglyLinkedList[Value]()
 
-proc push*(x: Factor) =
+proc push*(x: Value) =
   let node = newSinglyLinkedNode(x)
   stack.prepend(node)
 
-proc pop*[T]: T =
+proc pop*(): Value =
   result = stack.head.value
   stack.head = stack.head.next
 
 proc add() =
-  let y = pop[Factor]()
-  let x = pop[Factor]()
-  case x.op
-  of opString:
-    case y.op
-    of opInt:
-      push(initString(x.s & $y.i))
-    of opFloat:
-      push(initString(x.s & $y.f))
-    of opString:
-      push(initString(x.s & y.s))
-    else:
-      raise newException(Exception, "NOSUP")
-  of opInt:
-    case y.op
-    of opInt:
-      push(initInt(x.i + y.i))
-    of opFloat:
-      push(initFloat(float(x.i) + y.f))
-    of opString:
-      push(initString($x.i & y.s))
-    else:
-      raise newException(Exception, "NOSUP")
-  of opFloat:
-    case y.op:
-    of opInt:
-      push(initFloat(x.f + float(x.i)))
-    of opFloat:
-      push(initFloat(x.f + y.f))
-    of opString:
-      push(initString($x.f & y.s))
-    else:
-      raise newException(Exception, "NOSUP")
-  else:
-    raise newException(Exception, "NOSUP")
+  let y = pop()
+  let x = pop()
+  push(x + y)
+
+proc sub() =
+  let y = pop()
+  let x = pop()
+  push(x - y)
 
 proc puts() =
-  let x = pop[Factor]()
-  case x.op
-  of opInt: echo x.i
-  of opFloat: echo x.f
-  of opString: echo x.s
-  else:
-    raise newException(Exception, "NOSUP")
+  let x = pop()
+  echo x
 
-proc isDefined(id: string): bool =
-  false
+method eval*(x: Value) {.base.} = 
+  push(x)
 
-proc eval*(x: Factor) =
-  case x.op:
-  of opBool, opInt, opFloat, opString, opList:
-    push(x)
-  of opIdent:
-    if x.id == "+":
-      add()
-      return
-    elif x.id == "puts":
-      puts()
-      return
-    elif isDefined(x.id):
-      discard
-    else:
-      raise newException(Exception, "UNDEF")
-  else:
-    raise newException(Exception, "NOSUP")
+method eval*(x: IdentVal) =
+  case x.value
+  of "+": add()
+  of "-": sub()
+  of "puts": puts()
+  else: discard

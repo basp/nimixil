@@ -1,83 +1,46 @@
-import math, strutils, tables, scan
+import math, tables, strutils, scan, vm
 
 type
-  Operator* = enum
-    opInt,
-    opBool,
-    opChar,
-    opFloat,
-    opString,
-    opList,
-    opIdent
-  Factor* = object
-    case op*: Operator
-    of opBool: b*: bool
-    of opInt: i*: int
-    of opChar: c*: char
-    of opFloat: f*: float
-    of opString: s*: string
-    of opList: list*: seq[Factor]
-    of opIdent: id*: string
   Parser = ref object
     s: Scanner
     curTok: Token
     nextTok: Token
 
-proc initBool*(x: bool): Factor =
-  Factor(op: opBool, b: x)
-
-proc initInt*(x: int): Factor =
-  Factor(op: opInt, i: x)
-
-proc initFloat*(x: float): Factor =
-  Factor(op: opFloat, f: x)
-
-proc initChar*(x: char): Factor =
-  Factor(op: opChar, c: x)
-
-proc initString*(x: string): Factor =
-  Factor(op: opString, s: x[1..<len(x) - 1])
-
-proc initIdent*(x: string): Factor =
-  Factor(op: opIdent, id: x)
-
-proc initList*(x: seq[Factor]): Factor =
-  Factor(op: opList, list: x)
-
 proc advance(p: Parser) =
   p.curTok = p.nextTok
   p.nextTok = p.s.nextToken()
 
-var reserved = initTable[string, proc(): Factor]()
-reserved.add("true", proc(): Factor =
-  initBool(true))
-reserved.add("false", proc(): Factor =
-  initBool(false))
-reserved.add("pi", proc(): Factor =
-  initFloat(math.PI))
-reserved.add("tau", proc(): Factor =
-  initFloat(math.TAU))
-reserved.add("e", proc(): Factor =
-  initFloat(math.E))
+var reserved = initTable[string, proc(): Value]()
+reserved.add("true", proc(): Value =
+  newBool(true))
+reserved.add("false", proc(): Value =
+  newBool(false))
+reserved.add("pi", proc(): Value =
+  newFloat(math.PI))
+reserved.add("tau", proc(): Value =
+  newFloat(math.TAU))
+reserved.add("e", proc(): Value =
+  newFloat(math.E))
 
-proc parseIdent(p: Parser): Factor =
+proc parseIdent(p: Parser): Value =
   if reserved.hasKey(p.curTok.lexeme):
     result = reserved[p.curTok.lexeme]()
   else:
-    result = initIdent(p.curTok.lexeme)
+    result = newIdent(p.curTok.lexeme)
   p.advance()
 
-proc parseChar(p: Parser): Factor =
+proc parseChar(p: Parser): Value =
   # TODO:
   # fancier string to char conversion;
   # this assumes char literals like 'c'
   proc convert(s: string): char = s[1]
   let c = convert(p.curTok.lexeme)
-  result = initChar(c)
+  result = newChar(c)
   p.advance()
 
-proc parseString(p: Parser): Factor =
-  result = initString(p.curTok.lexeme)
+proc parseString(p: Parser): Value =
+  let s = p.curTok.lexeme.strip(chars = {'"'})
+  result = newString(s)
   p.advance()
 
 proc tryParseInt(s: string): (bool, int) =
@@ -87,11 +50,11 @@ proc tryParseInt(s: string): (bool, int) =
   except:
     result = (false, 0)
 
-proc parseNumber(p: Parser): Factor =
+proc parseNumber(p: Parser): Value =
   let s = p.curTok.lexeme
   let (ok, i) = tryParseInt(s)
   if ok:
-    result = initInt(i)
+    result = newInt(i)
     p.advance()
     return
   # if we can't parse it as an int we'll
@@ -99,25 +62,25 @@ proc parseNumber(p: Parser): Factor =
   # if that doesn't work we'll raise an error
   try:
     let f = parseFloat(p.curTok.lexeme)
-    result = initFloat(f)
+    result = newFloat(f)
     p.advance()
     return
   except:
     raise newException(Exception, "bad numeric");
 
-proc parseFactor(p: Parser): Factor
+proc parseFactor(p: Parser): Value
 
-proc parseList(p: Parser): Factor =
-  var terms : seq[Factor] = @[]
+proc parseList(p: Parser): Value =
+  var terms : seq[Value] = @[]
   p.advance()
   while p.curTok.kind != tkRBrack:
     let fac = p.parseFactor()
     terms.add(fac)
   if p.curTok.kind == tkRBrack:
     p.advance()
-  return initList(terms)
+  return newList(terms)
 
-proc parseFactor(p: Parser): Factor =
+proc parseFactor(p: Parser): Value =
   case p.curTok.kind
   of tkLBrack: p.parseList()
   of tkNumber: p.parseNumber()
@@ -130,7 +93,7 @@ proc parseFactor(p: Parser): Factor =
     # highly likely we'll be hitting tkEOF
     raise newException(Exception, $p.curTok.kind)
 
-proc parseTerm*(p: Parser): seq[Factor] =
+proc parseTerm*(p: Parser): seq[Value] =
   result = @[]
   while(p.curTok.kind != tkEOF):
     let fac = p.parseFactor()
