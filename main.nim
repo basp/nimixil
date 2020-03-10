@@ -8,6 +8,7 @@ while true:
     let term = parser.parseTerm()
     for x in term:
       eval(x)
+    echo "----------"
     for x in stack:
       echo x
   except Exception:

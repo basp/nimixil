@@ -14,9 +14,10 @@ type
     value*: string
   IdentVal* = ref object of Value
     value*: string
-  ListVal* = ref object of Value
-    values*: seq[Value]
   SetVal* = ref object of Value
+    value: int
+  ListVal* = ref object of Value
+    elements*: seq[Value]
 
 proc newBool*(x: bool): BoolVal =
   BoolVal(value: x)
@@ -37,7 +38,7 @@ proc newIdent*(x: string): Value =
   IdentVal(value: x)
 
 proc newList*(x: seq[Value]): Value =
-  ListVal(values: x)
+  ListVal(elements: x)
 
 proc newValue*(v: int): IntVal =
   IntVal(value: v)
@@ -99,3 +100,47 @@ method `-`*(a: FloatVal, b: IntVal): Value =
 method `-`*(a: FloatVal, b: FloatVal): Value =
   newFloat(a.value - b.value)
 
+method `*`*(a: Value, b: Value): Value {.base.} =
+  raise newException(Exception, "tilt")
+
+method `*`*(a: IntVal, b: IntVal): Value =
+  newInt(a.value * b.value)
+
+method `*`*(a: IntVal, b: FloatVal): Value =
+  newFloat(a.value.float * b.value)
+
+method `*`*(a: FloatVal, b: IntVal): Value =
+  newFloat(a.value * b.value.float)
+
+method `*`*(a: FloatVal, b: FloatVal): Value =
+  newFloat(a.value * b.value)
+
+method `/`*(a: Value, b: Value): Value {.base.} =
+  raise newException(Exception, "tilt")
+
+method `/`*(a: IntVal, b: IntVal): Value =
+  newFloat(a.value / b.value)
+
+method `/`*(a: IntVal, b: FloatVal): Value =
+  newFloat(a.value.float * b.value)
+
+method `/`*(a: FloatVal, b: IntVal): Value =
+  newFloat(a.value / b.value.float)
+
+method `/`*(a: FloatVal, b: FloatVal): Value =
+  newFloat(a.value / b.value)
+
+method `not`*(a: Value): Value {.base.} =
+  raise newException(Exception, "tilt")
+
+method `not`*(a: BoolVal): Value =
+  newBool(not a.value)
+
+method `neg`*(a: Value): Value {.base.} =
+  raise newException(Exception, "tilt")
+
+method `neg`*(a: IntVal): Value =
+  newInt(-a.value)
+
+method `neg`*(a: FloatVal): Value =
+  newFloat(-a.value)  
