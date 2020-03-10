@@ -4,6 +4,8 @@ const ADD = "+"
 const SUB = "-"
 const MUL = "*"
 const DIV = "/"
+const MIN = "min"
+const MAX = "max"
 const NOT = "not"
 const NEG = "neg"
 const SQRT = "sqrt"
@@ -22,6 +24,12 @@ const I = "i"
 const X = "x" 
 
 var stack* = initSinglyLinkedList[Value]()
+
+method eval*(x: Value) {.base.}
+
+proc exeterm(p: ListVal) =
+  for x in p.elements:
+    eval(x)
 
 proc push(x: Value) {.inline.} =
   let node = newSinglyLinkedNode(x)
@@ -66,7 +74,7 @@ proc integerOrFloatAsSecond(name: string) {.inline.} =
 proc logical(name: string) {.inline.} =
   doAssert stack.head.value.logical, name
 
-proc quote(name: string) {.inline.} =
+proc quote(name: string) =
   doAssert stack.head.value.list, name
 
 template unary(op: untyped, name: string) =
@@ -93,6 +101,9 @@ proc opAdd(name: auto) {.inline.} = bifloatop(`+`, name)
 proc opSub(name: auto) {.inline.} = bifloatop(`-`, name)
 proc opMul(name: auto) {.inline.} = bifloatop(`*`, name)
 proc opDiv(name: auto) {.inline.} = bifloatop(`/`, name)
+
+proc opMin(name: auto) {.inline.} = bifloatop(`min`, name)
+proc opMax(name: auto) {.inline.} = bifloatop(`max`, name)
 
 proc opSqrt(name: auto) {.inline.} = unfloatop(`sqrt`, name)
 proc opSin(name: auto) {.inline.} = unfloatop(`sin`, name)
@@ -123,12 +134,6 @@ proc opPuts(name: auto) {.inline.} =
   let x = pop()
   echo x
 
-method eval*(x: Value) {.base.}
-
-proc exeterm(p: ListVal) =
-  for x in p.elements:
-    eval(x)
-
 proc opI(name: auto) {.inline.} =
   oneParameter(name)
   quote(name)
@@ -150,6 +155,8 @@ method eval*(x: IdentVal) =
   of SUB: opSub(SUB)
   of MUL: opMul(MUL)
   of DIV: opDiv(DIV)
+  of MIN: opMin(MIN)
+  of MAX: opMAX(MAX)
   of NOT: opNot(NOT)
   of NEG: opNeg(NEG)
   of SQRT: opSqrt(SQRT)

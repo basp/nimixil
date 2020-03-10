@@ -109,6 +109,28 @@ method `/`*(a: FloatVal, b: IntVal): Value {.inline.} =
 method `/`*(a: FloatVal, b: FloatVal): Value {.inline.} =
   newFloat(a.value / b.value)
 
+method `max`*(a: Value, b: Value): Value {.base,inline.} =
+  raise newException(Exception, "TILT max")
+method `max`*(a: IntVal, b: IntVal): Value {.inline.} =
+  newInt(max(a.value, b.value))
+method `max`*(a: FloatVal, b: IntVal): Value {.inline.} =
+  newFloat(max(a.value, b.value.float))
+method `max`*(a: IntVal, b: FloatVal): Value {.inline.} =
+  newFloat(max(a.value.float, b.value))
+method `max`*(a: FloatVal, b: FloatVal): Value {.inline.} =
+  newFloat(max(a.value, b.value))
+
+method `min`*(a: Value, b: Value): Value {.base,inline.} =
+  raise newException(Exception, "TILT min")
+method `min`*(a: IntVal, b: IntVal): Value {.inline.} =
+  newInt(min(a.value, b.value))
+method `min`*(a: FloatVal, b: IntVal): Value {.inline.} =
+  newFloat(min(a.value, b.value.float))
+method `min`*(a: IntVal, b: FloatVal): Value {.inline.} =
+  newFloat(min(a.value.float, b.value))
+method `min`*(a: FloatVal, b: FloatVal): Value {.inline.} =
+  newFloat(min(a.value, b.value))
+
 method `not`*(a: Value): Value {.base, inline.} =
   raise newException(Exception, "TILT not")
 method `not`*(a: BoolVal): Value {.inline.} =
@@ -178,5 +200,3 @@ method `cosh`*(a: Value): Value {.base.} =
 
 method `tanh`*(a: Value): Value {.base.} =
   raise newException(Exception, "TILT tanh")
-
-

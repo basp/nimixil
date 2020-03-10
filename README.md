@@ -1,2 +1,4 @@
 # nimixil
-Xil in Nim
+Xil in Nim.
+
+As a learning exeriment.
