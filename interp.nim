@@ -8,7 +8,10 @@ const
   ROLLDOWN = "rolldown"
   ROTATE = "rotate"
   POP = "pop"
+  PEEK = "peek"
+  PUT = "put"
   CHOICE = "choice"
+  CMP = "cmp"
   OR ="or"
   XOR = "xor"
   AND = "and"
@@ -38,10 +41,15 @@ const
   SUCC = "succ"
   MAX = "max"
   MIN = "min"
-  PEEK = "peek"
-  PUTS = "puts"
   CONS = "cons"
   SWONS = "swons"
+  FIRST = "first"
+  REST = "rest"
+  AT = "at"
+  OF = "of"
+  SIZE = "size"
+  UNCONS = "uncons"
+  UNSWONS = "unswons"
   I = "i"
   X = "x" 
   DIP = "dip"
@@ -67,7 +75,7 @@ template saved6() = saved.head.next.next.next.next.next
 
 method eval*(x: Value) {.base,locks:0.}
 
-proc exeterm(p: ListVal) =
+proc execterm(p: ListVal) =
   for x in p.elements:
     eval(x)
 
@@ -131,6 +139,12 @@ proc fiveParameters(name: string) {.inline.} =
   fourParameters(name)
   doAssert stack.head.next.next.next.next != nil, name
 
+proc integer(name: string) {.inline.} =
+  doAssert stack.head.value.integer
+
+proc integerAsSecond(name: string) {.inline.} =
+  doAssert stack.head.next.value.integer
+
 proc twoIntegers(name: string) {.inline.} =
   doAssert stack.head.value.integer, name
   doAssert stack.head.next.value.integer, name
@@ -153,7 +167,10 @@ proc ordinal(name: string) {.inline.} =
 proc aggregate(name: string) {.inline.} =
   doAssert stack.head.value.aggregate, name
 
-proc oneQuote(name: string) =
+proc aggregateAsSecond(name: string) {.inline.} =
+  doAssert stack.head.next.value.aggregate
+
+proc oneQuote(name: string) {.inline.} =
   doAssert stack.head.value.list, name
 
 template unary(op: untyped, name: string) =
@@ -240,6 +257,11 @@ proc opChoice(name: auto) {.inline.} =
   else:
     push(f)
 
+proc opCmp(name: auto) {.inline.} =
+  let y = pop()
+  let x = pop()
+  push(cmp(x, y))
+
 proc opOr(name: auto) {.inline.} = bilogicop(`or`, name)
 proc opXor(name: auto) {.inline.} = bilogicop(`xor`, name)
 proc opAnd(name: auto) {.inline.} = bilogicop(`and`, name)
@@ -293,10 +315,10 @@ proc opSinh(name: auto) {.inline.} = unfloatop(sinh, name)
 proc opCosh(name: auto) {.inline.} = unfloatop(cosh, name)
 proc opTanh(name: auto) {.inline.} = unfloatop(tanh, name)
 
-proc opPred(name: auto) {.inline.} = discard
-proc opSucc(name: auto) {.inline.} = discard
+proc opPred(name: auto) {.inline.} = unordop(pred, name)
+proc opSucc(name: auto) {.inline.} = unordop(succ, name)
 
-proc opPuts(name: auto) {.inline.} =
+proc opPut(name: auto) {.inline.} =
   oneParameter(name)
   let x = pop()
   echo x
@@ -304,33 +326,85 @@ proc opPuts(name: auto) {.inline.} =
 proc opPeek(name: string) {.inline.} =
   oneParameter(name)
 
-proc opCons(name: auto) =
+proc opCons(name: auto) {.inline.} =
   twoParameters(name)
   aggregate(name)
   binary(cons, name)
   
-proc opSwons(name: auto) =
+proc opSwons(name: auto) {.inline.} =
   opSwap(name)
   opCons(name)
+
+proc opFirst(name: auto) {.inline.} =
+  oneParameter(name)
+  aggregate(name)
+  let a = pop()
+  push(first(a))
+
+proc opRest(name: auto) {.inline.} =
+  oneParameter(name)
+  aggregate(name)
+  let a = pop()
+  push(rest(a))
+
+template indexop(name: auto) =
+  let i = popt[IntVal]()
+  let a = pop()
+  push(at(a, i))
+
+proc opAt(name: auto) {.inline.} =
+  twoParameters(name)
+  integer(name)
+  aggregateAsSecond(name)
+  indexop(name)
+
+proc opOf(name: auto) {.inline.} =
+  twoParameters(name)
+  aggregate(name)
+  integerAsSecond(name)
+  opSwap(name)
+  indexop(name)
+
+proc opSize(name: auto) {.inline.} =
+  oneParameter(name)
+  aggregate(name)
+  let a = pop()
+  push(size(a))
+
+proc popuncons(name: auto): (Value, Value) {.inline.} =
+  oneParameter(name)
+  aggregate(name)
+  let a = pop()
+  uncons(a)
+
+proc opUncons(name: auto) {.inline.} =
+  let (first, rest) = popuncons(name)
+  push(first)
+  push(rest)
+
+proc opUnswons(name: auto) {.inline.} =
+  let (first, rest) = popuncons(name)
+  push(rest)
+  push(first)
 
 proc opI(name: auto) {.inline.} =
   oneParameter(name)
   oneQuote(name)
   let p = popt[ListVal]()
-  exeterm(p)
+  execterm(p)
 
 proc opX(name: auto) {.inline.} =
   oneParameter(name)
   oneQuote(name)
   let p = peekt[ListVal]()
-  exeterm(p)
+  execterm(p)
 
 proc opDip(name: auto) {.inline.} =
   twoParameters(name)
   oneQuote(name)
   let p = popt[ListVal]()
   let x = pop()
-  exeterm(p)
+  execterm(p)
   push(x)
 
 proc opApp1(name: auto) {.inline.} =
@@ -338,16 +412,14 @@ proc opApp1(name: auto) {.inline.} =
   oneQuote(name)
   let p = popt[ListVal]()
   discard pop()
-  exeterm(p)
-
-# construct
+  execterm(p)
 
 template nary(paramcount: untyped, name: auto, top: untyped) =
   paramcount(name)
   oneQuote(name)
   saved = stack
   let p = popt[ListVal]()
-  exeterm(p)
+  execterm(p)
   let x = peek()
   stack.head = top
   stack.prepend(x)
@@ -357,56 +429,56 @@ proc opUnary(name: auto) {.inline.} = nary(twoParameters, name, saved3)
 proc opBinary(name: auto) {.inline.} = nary(threeParameters, name, saved4)
 proc opTernary(name: auto) {.inline.} = nary(fourParameters, name, saved5)
 
-proc opUnary2(name: auto) {.inline.} =
+proc opUnary2(name: auto) =
   threeParameters(name)
   oneQuote(name)
   saved = stack
   let p = popt[ListVal]()
   stack.head = saved2
-  exeterm(p)
+  execterm(p)
   let py = peek()
   stack.head = saved3
-  exeterm(p)
+  execterm(p)
   let px = peek()
   stack.head = saved4
   push(px)
   push(py)
 
-proc opUnary3(name: auto) {.inline.} =
+proc opUnary3(name: auto) =
   fourParameters(name)
   oneQuote(name)
   saved = stack
   let p = popt[ListVal]()
   stack.head = saved2
-  exeterm(p)
+  execterm(p)
   let pz = peek()
   stack.head = saved3
-  exeterm(p)
+  execterm(p)
   let py = peek()
   stack.head = saved4
-  exeterm(p)
+  execterm(p)
   let px = peek()
   stack.head = saved5
   push(px)
   push(py)
   push(pz)
 
-proc opUnary4(name: auto) {.inline.} =
+proc opUnary4(name: auto) =
   fiveParameters(name)
   oneQuote(name)
   saved = stack
   let p = popt[ListVal]()
   stack.head = saved2
-  exeterm(p)
+  execterm(p)
   let pw = peek()
   stack.head = saved3
-  exeterm(p)
+  execterm(p)
   let pz = peek()
   stack.head = saved4
-  exeterm(p)
+  execterm(p)
   let py = peek()
   stack.head = saved5
-  exeterm(p)
+  execterm(p)
   let px = peek()
   stack.head = saved6
   push(px)
@@ -427,6 +499,7 @@ method eval*(x: IdentVal) =
   of ROTATE: opRotate(ROTATE)
   of POP: discard opPop(POP)
   of CHOICE: opChoice(CHOICE)
+  of CMP: opCmp(CMP)
   of OR: opOr(OR)
   of XOR: opXor(XOR)
   of AND: opAnd(AND)
@@ -457,9 +530,16 @@ method eval*(x: IdentVal) =
   of MAX: opMax(MAX)
   of MIN: opMin(MIN)
   of PEEK: opPeek(PEEK)
-  of PUTS: opPuts(PUTS)
+  of PUT: opPut(PUT)
   of CONS: opCons(CONS)
   of SWONS: opSwons(SWONS)
+  of FIRST: opFirst(FIRST)
+  of REST: opRest(REST)
+  of AT: opAt(AT)
+  of OF: opOf(OF)
+  of SIZE: opSize(SIZE)
+  of UNCONS: opUncons(UNCONS)
+  of UNSWONS: opUnswons(UNSWONS)
   of I: opI(I)
   of X: opX(X)
   of DIP: opDip(DIP)
@@ -471,4 +551,6 @@ method eval*(x: IdentVal) =
   of UNARY2: opUnary2(UNARY2)
   of UNARY3: opUnary3(UNARY3)
   of UNARY4: opUnary4(UNARY4)
-  else: discard
+  else:
+    let msg = "undefined symbol `" & $x & "`"
+    raiseRuntimeError(msg)

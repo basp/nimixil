@@ -1,4 +1,4 @@
-import strutils, math, lists
+import strutils, math, lists, sequtils
 
 const SETSIZE = 32
 
@@ -20,8 +20,12 @@ type
     value: int
   ListVal* = ref object of Value
     elements*: SinglyLinkedList[Value]
+  RuntimeError* = object of Exception
 
-method isThruthy*(x: Value): bool {.base,inline.} = false
+proc raiseRuntimeError*(msg: string) =
+  raise newException(RuntimeError, msg)
+
+method isThruthy*(x: Value): bool {.base, inline.} = false
 method isThruthy*(x: IntVal): bool {.inline.} = x.value != 0
 method isThruthy*(x: FloatVal): bool {.inline.} = x.value != 0
 method isThruthy*(x: StringVal): bool {.inline.} = len(x.value) > 0
@@ -30,14 +34,19 @@ method isThruthy*(x: ListVal): bool {.inline.} = x.elements.head != nil
 method isThruthy*(x: SetVal): bool {.inline.} = x.value > 0
 method isThruthy*(x: CharVal): bool {.inline.} = ord(x.value) > 0
 
-proc add*(s: int, x: range[0..SETSIZE-1]): int = 
+proc add*(s: int, x: range[0..SETSIZE-1]): int =
   s or (1 shl x)
 
-proc remove*(s: int, x: range[0..SETSIZE-1]): int = 
-  s and not (1 shl x) 
+proc remove*(s: int, x: range[0..SETSIZE-1]): int =
+  s and not (1 shl x)
 
 proc contains*(s: int, x: range[0..SETSIZE-1]): bool =
-  (s and (1 shl x)) > 0  
+  (s and (1 shl x)) > 0
+
+iterator elements*(s: int): int =
+  for i in 0..<SETSIZE:
+    if s.contains(i):
+      yield i
 
 proc newBool*(x: bool): BoolVal {.inline.} =
   BoolVal(value: x)
@@ -80,7 +89,7 @@ proc newValue*(v: string): StringVal {.inline.} =
 proc newValue*(v: bool): BoolVal {.inline.} =
   BoolVal(value: v)
 
-method clone*(self: Value): Value {.base,inline.} =
+method clone*(self: Value): Value {.base, inline.} =
   self
 method clone*(self: IntVal): Value {.inline.} =
   newInt(self.value)
@@ -97,7 +106,7 @@ method clone*(self: IdentVal): Value {.inline.} =
 method clone*(self: SetVal): Value {.inline.} =
   newSet(self.value)
 
-method `$`*(self: Value): string {.base,inline.} =
+method `$`*(self: Value): string {.base, inline.} =
   repr(self)
 method `$`*(self: IntVal): string {.inline.} =
   $self.value
@@ -112,44 +121,66 @@ method `$`*(self: StringVal): string {.inline.} =
 method `$`*(self: IdentVal): string {.inline.} =
   self.value
 method `$`*(self: ListVal): string {.inline.} =
-  $self.elements  
+  $self.elements
 method `$`*(self: SetVal): string {.inline.} =
-  var xs : seq[int] = @[]
-  for i in 0..<SETSIZE:
-    if self.value.contains(i):
-      xs.add(i)
+  var xs = toSeq(elements(self.value))
   "{" & strutils.join(xs, " ") & "}"
 
-method `or`*(a: Value, b: Value): Value {.base,inline.} =
-  raise newException(Exception, "TILT or")
+method cmp*(a: Value, b: Value): Value {.base, inline.} =
+  raiseRuntimeError("TILT cmp")
+method cmp*(a: IntVal, b: IntVal): Value {.inline.} =
+  newInt(cmp(a.value, b.value))
+method cmp*(a: IntVal, b: FloatVal): Value {.inline.} =
+  newInt(cmp(a.value.float, b.value))
+method cmp*(a: FloatVal, b: IntVal): Value {.inline.} =
+  newInt(cmp(a.value, b.value.float))
+method cmp*(a: BoolVal, b: BoolVal): Value {.inline.} =
+  newInt(cmp(a.value, b.value))
+method cmp*(a: BoolVal, b: IntVal): Value {.inline.} =
+  newInt(cmp(ord(a.value), b.value))
+method cmp*(a: IntVal, b: BoolVal): Value {.inline.} =
+  newInt(cmp(a.value, ord(b.value)))
+method cmp*(a: BoolVal, b: CharVal): Value {.inline.} =
+  newInt(cmp(ord(a.value), ord(b.value)))
+method cmp*(a: CharVal, b: BoolVal): Value {.inline.} =
+  newInt(cmp(ord(a.value), ord(b.value)))
+method cmp*(a: CharVal, b: CharVal): Value {.inline.} =
+  newInt(cmp(a.value, b.value))
+method cmp*(a: CharVal, b: IntVal): Value {.inline.} =
+  newInt(cmp(ord(a.value), b.value))
+method cmp*(a: IntVal, b: CharVal): Value {.inline.} =
+  newInt(cmp(a.value, ord(b.value)))
+
+method `or`*(a: Value, b: Value): Value {.base, inline.} =
+  raiseRuntimeError("TILT or")
 method `or`*(a: BoolVal, b: BoolVal): Value {.inline.} =
   newBool(a.value or b.value)
 method `or`*(a: SetVal, b: SetVal): Value {.inline.} =
   newSet(a.value or b.value)
 
-method `xor`*(a: Value, b: Value): Value {.base,inline.} =
-  raise newException(Exception, "TILT or")
+method `xor`*(a: Value, b: Value): Value {.base, inline.} =
+  raiseRuntimeError("TILT or")
 method `xor`*(a: BoolVal, b: BoolVal): Value {.inline.} =
   newBool(a.value xor b.value)
 method `xor`*(a: SetVal, b: SetVal): Value {.inline.} =
   newSet(a.value xor b.value)
 
-method `and`*(a: Value, b: Value): Value {.base,inline.} =
-  raise newException(Exception, "TILT and")
+method `and`*(a: Value, b: Value): Value {.base, inline.} =
+  raiseRuntimeError("TILT and")
 method `and`*(a: BoolVal, b: BoolVal): Value {.inline.} =
   newBool(a.value and b.value)
 method `and`*(a: SetVal, b: SetVal): Value {.inline.} =
   newSet(a.value and b.value)
 
-method `not`*(a: Value): Value {.base,inline.} =
-  raise newException(Exception, "TILT not")
+method `not`*(a: Value): Value {.base, inline.} =
+  raiseRuntimeError("TILT not")
 method `not`*(a: BoolVal): Value {.inline.} =
   newBool(not a.value)
 method `not`*(a: Setval): Value {.inline.} =
   newSet(not a.value)
 
-method `+`*(a: Value, b: Value): Value {.base,inline.} =
-  raise newException(Exception, "TILT +")
+method `+`*(a: Value, b: Value): Value {.base, inline.} =
+  raiseRuntimeError("TILT +")
 method `+`*(a: IntVal, b: IntVal): Value {.inline.} =
   newInt(a.value + b.value)
 method `+`*(a: IntVal, b: FloatVal): Value {.inline.} =
@@ -159,8 +190,8 @@ method `+`*(a: FloatVal, b: IntVal): Value {.inline.} =
 method `+`*(a: FloatVal, b: FloatVal): Value {.inline.} =
   newFloat(a.value + b.value)
 
-method `-`*(a: Value, b: Value): Value {.base,inline.} =
-  raise newException(Exception, "TILT -")
+method `-`*(a: Value, b: Value): Value {.base, inline.} =
+  raiseRuntimeError("TILT -")
 method `-`*(a: IntVal, b: IntVal): Value {.inline.} =
   newInt(a.value - b.value)
 method `-`*(a: IntVal, b: FloatVal): Value {.inline.} =
@@ -171,7 +202,7 @@ method `-`*(a: FloatVal, b: FloatVal): Value {.inline.} =
   newFloat(a.value - b.value)
 
 method `*`*(a: Value, b: Value): Value {.base.} =
-  raise newException(Exception, "TILT *")
+  raiseRuntimeError("TILT *")
 method `*`*(a: IntVal, b: IntVal): Value {.inline.} =
   newInt(a.value * b.value)
 method `*`*(a: IntVal, b: FloatVal): Value {.inline.} =
@@ -181,8 +212,8 @@ method `*`*(a: FloatVal, b: IntVal): Value {.inline.} =
 method `*`*(a: FloatVal, b: FloatVal): Value {.inline.} =
   newFloat(a.value * b.value)
 
-method `/`*(a: Value, b: Value): Value {.base,inline.} =
-  raise newException(Exception, "TILT /")
+method `/`*(a: Value, b: Value): Value {.base, inline.} =
+  raiseRuntimeError("TILT /")
 method `/`*(a: IntVal, b: IntVal): Value {.inline.} =
   newFloat(a.value / b.value)
 method `/`*(a: IntVal, b: FloatVal): Value {.inline.} =
@@ -192,40 +223,40 @@ method `/`*(a: FloatVal, b: IntVal): Value {.inline.} =
 method `/`*(a: FloatVal, b: FloatVal): Value {.inline.} =
   newFloat(a.value / b.value)
 
-method `mod`*(a: Value, b: Value): Value {.base,inline.} =
-  raise newException(Exception, "TILT mod")
+method `mod`*(a: Value, b: Value): Value {.base, inline.} =
+  raiseRuntimeError("TILT mod")
 method `mod`*(a: IntVal, b: IntVal): Value {.inline.} =
-  newInt(a.value mod b.value)  
+  newInt(a.value mod b.value)
 method `mod`*(a: IntVal, b: FloatVal): Value {.inline.} =
-  newFloat(a.value.float mod b.value)  
+  newFloat(a.value.float mod b.value)
 method `mod`*(a: FloatVal, b: IntVal): Value {.inline.} =
-  newFloat(a.value mod b.value.float)  
+  newFloat(a.value mod b.value.float)
 method `mod`*(a: FloatVal, b: FloatVal): Value {.inline.} =
-  newFloat(a.value mod b.value)  
+  newFloat(a.value mod b.value)
 
-method `div`*(a: Value, b: Value): (Value, Value) {.base,inline.} =
-  raise newException(Exception, "TILT div")
+method `div`*(a: Value, b: Value): (Value, Value) {.base, inline.} =
+  raiseRuntimeError("TILT div")
 method `div`*(a: IntVal, b: IntVal): (Value, Value) {.inline.} =
   let q = a.value div b.value
   let rem = a.value mod b.value
   (newInt(q), newInt(rem))
 
-method sign*(a: Value): Value {.base,inline.} =
-  raise newException(Exception, "TILT sign")
+method sign*(a: Value): Value {.base, inline.} =
+  raiseRuntimeError("TILT sign")
 method sign*(a: IntVal): Value {.inline.} =
   newInt(sgn[int](a.value))
 method sign*(a: FloatVal): Value {.inline.} =
   newfloat(sgn[float](a.value).float)
 
-method neg*(a: Value): Value {.base,inline.} =
-  raise newException(Exception, "TILT neg")
+method neg*(a: Value): Value {.base, inline.} =
+  raiseRuntimeError("TILT neg")
 method neg*(a: IntVal): Value {.inline.} =
   newInt(-a.value)
 method neg*(a: FloatVal): Value {.inline.} =
   newFloat(-a.value)
 
-method ord*(a: Value): Value {.base,inline.} =
-  raise newException(Exception, "TILT ord")
+method ord*(a: Value): Value {.base, inline.} =
+  raiseRuntimeError("TILT ord")
 method ord*(a: CharVal): Value {.inline.} =
   newInt(ord(a.value))
 method ord*(a: IntVal): Value {.inline.} =
@@ -233,8 +264,8 @@ method ord*(a: IntVal): Value {.inline.} =
 method ord*(a: BoolVal): Value {.inline.} =
   newInt(ord(a.value))
 
-method chr*(a: Value): Value {.base,inline.} =
-  raise newException(Exception, "TILT chr")
+method chr*(a: Value): Value {.base, inline.} =
+  raiseRuntimeError("TILT chr")
 method chr*(a: CharVal): Value {.inline.} =
   newChar(chr(ord(a.value)))
 method chr*(a: IntVal): Value {.inline.} =
@@ -242,85 +273,85 @@ method chr*(a: IntVal): Value {.inline.} =
 method chr*(a: BoolVal): Value {.inline.} =
   newChar(chr(ord(a.value)))
 
-method abs*(a: Value): Value {.base,inline.} =
-  raise newException(Exception, "TILT abs")
+method abs*(a: Value): Value {.base, inline.} =
+  raiseRuntimeError("TILT abs")
 method abs*(a: IntVal): Value {.inline.} =
   newInt(abs(a.value))
 method abs*(a: FloatVal): Value {.inline.} =
   newFloat(abs(a.value))
 
 method acos*(a: Value): Value {.base, inline.} =
-  raise newException(Exception, "TILT acos")
+  raiseRuntimeError("TILT acos")
 method acos*(a: IntVal): Value {.inline.} =
   newFloat(arccos(a.value.float))
 method acos*(a: FloatVal): Value {.inline.} =
   newFloat(arccos(a.value.float))
 
-method asin*(a: Value): Value {.base,inline.} =
-  raise newException(Exception, "TILT asin")
+method asin*(a: Value): Value {.base, inline.} =
+  raiseRuntimeError("TILT asin")
 method asin*(a: IntVal): Value {.inline.} =
   newFloat(arcsin(a.value.float))
 method asin*(a: FloatVal): Value {.inline.} =
   newFloat(arcsin(a.value.float))
 
-method atan*(a: Value): Value {.base,inline.} =
-  raise newException(Exception, "TILT atan")
+method atan*(a: Value): Value {.base, inline.} =
+  raiseRuntimeError("TILT atan")
 method atan*(a: IntVal): Value {.inline.} =
   newFloat(arctan(a.value.float))
 method atan*(a: FloatVal): Value {.inline.} =
   newFloat(arctan(a.value.float))
 
-method atan2*(a: Value, b: Value): Value {.base,inline.} =
-  raise newException(Exception, "TILT atan2")
+method atan2*(a: Value, b: Value): Value {.base, inline.} =
+  raiseRuntimeError("TILT atan2")
 
-method ceil*(a: Value): Value {.base,inline.} =
-  raise newException(Exception, "TILT ceil")
+method ceil*(a: Value): Value {.base, inline.} =
+  raiseRuntimeError("TILT ceil")
 
 method cos*(a: Value): Value {.base, inline.} =
-  raise newException(Exception, "TILT cos")
+  raiseRuntimeError("TILT cos")
 method cos*(a: IntVal): Value {.inline.} =
   newFloat(cos(a.value.float))
 method cos*(a: FloatVal): Value {.inline.} =
   newFloat(cos(a.value))
 
-method cosh*(a: Value): Value {.base,inline.} =
-  raise newException(Exception, "TILT cosh")
+method cosh*(a: Value): Value {.base, inline.} =
+  raiseRuntimeError("TILT cosh")
 
-method exp*(a: Value): Value {.base,inline.} =
-  raise newException(Exception, "TILT exp")
+method exp*(a: Value): Value {.base, inline.} =
+  raiseRuntimeError("TILT exp")
 
-method floor*(a: Value): Value {.base,inline.} =
-  raise newException(Exception, "TILT floor")
+method floor*(a: Value): Value {.base, inline.} =
+  raiseRuntimeError("TILT floor")
 
 method sin*(a: Value): Value {.base, inline.} =
-  raise newException(Exception, "TILT sin")
+  raiseRuntimeError("TILT sin")
 method sin*(a: IntVal): Value {.inline.} =
   newFloat(sin(a.value.float))
 method sin*(a: FloatVal): Value {.inline.} =
   newFloat(sin(a.value))
 
 method sinh*(a: Value): Value {.base.} =
-  raise newException(Exception, "TILT sinh")
+  raiseRuntimeError("TILT sinh")
 
 method sqrt*(a: Value): Value {.base, inline.} =
-  raise newException(Exception, "TILT sqrt")
+  raiseRuntimeError("TILT sqrt")
 method sqrt*(a: IntVal): Value {.inline.} =
   newFloat(sqrt(a.value.float))
 method sqrt*(a: FloatVal): Value {.inline.} =
   newFloat(sqrt(a.value))
 
 method tan*(a: Value): Value {.base.} =
-  raise newException(Exception, "TILT tan")
+  raiseRuntimeError("TILT tan")
 method tan*(a: IntVal): Value {.inline.} =
   newFloat(tan(a.value.float))
 method tan*(a: FloatVal): Value {.inline.} =
   newFloat(tan(a.value))
 
 method tanh*(a: Value): Value {.base.} =
-  raise newException(Exception, "TILT tanh")
+  raiseRuntimeError("TILT tanh")
 
-method pred*(a: Value): Value {.base,inline.} =
-  raise newException(Exception, "TILT pred")
+method pred*(a: Value): Value {.base, inline.} =
+  raiseRuntimeError("TILT pred")
 method pred*(a: BoolVal): Value {.inline.} =
   newBool(pred(a.value))
 method pred*(a: CharVal): Value {.inline.} =
@@ -328,8 +359,8 @@ method pred*(a: CharVal): Value {.inline.} =
 method pred*(a: IntVal): Value {.inline.} =
   newInt(pred(a.value))
 
-method succ*(a: Value): Value {.base,inline.} =
-  raise newException(Exception, "TILT succ")
+method succ*(a: Value): Value {.base, inline.} =
+  raiseRuntimeError("TILT succ")
 method succ*(a: BoolVal): Value {.inline.} =
   newBool(succ(a.value))
 method succ*(a: CharVal): Value {.inline.} =
@@ -337,8 +368,8 @@ method succ*(a: CharVal): Value {.inline.} =
 method succ*(a: IntVal): Value {.inline.} =
   newInt(succ(a.value))
 
-method max*(a: Value, b: Value): Value {.base,inline.} =
-  raise newException(Exception, "TILT max")
+method max*(a: Value, b: Value): Value {.base, inline.} =
+  raiseRuntimeError("TILT max")
 method max*(a: IntVal, b: IntVal): Value {.inline.} =
   newInt(max(a.value, b.value))
 method max*(a: FloatVal, b: IntVal): Value {.inline.} =
@@ -348,8 +379,8 @@ method max*(a: IntVal, b: FloatVal): Value {.inline.} =
 method max*(a: FloatVal, b: FloatVal): Value {.inline.} =
   newFloat(max(a.value, b.value))
 
-method min*(a: Value, b: Value): Value {.base,inline.} =
-  raise newException(Exception, "TILT min")
+method min*(a: Value, b: Value): Value {.base, inline.} =
+  raiseRuntimeError("TILT min")
 method min*(a: IntVal, b: IntVal): Value {.inline.} =
   newInt(min(a.value, b.value))
 method min*(a: FloatVal, b: IntVal): Value {.inline.} =
@@ -359,8 +390,8 @@ method min*(a: IntVal, b: FloatVal): Value {.inline.} =
 method min*(a: FloatVal, b: FloatVal): Value {.inline.} =
   newFloat(min(a.value, b.value))
 
-method cons*(x: Value, a: Value): Value {.base,inline.} =
-  raise newException(Exception, "TILT cons")
+method cons*(x: Value, a: Value): Value {.base, inline.} =
+  raiseRuntimeError("TILT cons")
 method cons*(x: Value, a: ListVal): Value {.inline.} =
   var xs = a.elements
   xs.append(x)
@@ -372,3 +403,43 @@ method cons*(x: CharVal, a: StringVal): Value {.inline.} =
 method cons*(x: IntVal, a: SetVal): Value {.inline.} =
   let s = add(a.value, x.value)
   newSet(s)
+
+method first*(a: Value): Value {.base, inline.} =
+  raiseRuntimeError("TILT first")
+method first*(a: ListVal): Value {.inline.} =
+  a.elements.head.value.clone
+method first*(a: SetVal): Value {.inline.} =
+  newInt(toSeq(elements(a.value))[0])
+method first*(a: StringVal): Value {.inline.} =
+  newChar(a.value[0])
+
+method rest*(a: Value): Value {.base, inline.} =
+  raiseRuntimeError("TILT rest")
+method rest*(a: ListVal): Value {.inline.} =
+  var list = initSinglyLinkedList[Value]()
+  list.head = a.elements.head.next
+  newList(list)
+method rest*(a: SetVal): Value {.inline.} =
+  let first = toSeq(elements(a.value))[0]
+  newSet(remove(a.value, first))
+
+method at*(a: Value, i: IntVal): Value {.base, inline.} =
+  raiseRuntimeError("TILT cons")
+method at*(a: ListVal, i: IntVal): Value {.inline.} =
+  toSeq(a.elements.items)[i.value]
+method at*(a: SetVal, i: IntVal): Value {.inline.} =
+  newInt(toSeq(elements(a.value))[i.value])
+method at*(a: StringVal, i: IntVal): Value {.inline.} =
+  newChar(a.value[i.value])
+
+method size*(a: Value): Value {.base, inline.} =
+  raiseRuntimeError("TILT size")
+method size*(a: ListVal): Value {.inline.} =
+  newInt(toSeq(a.elements.items).len)
+method size*(a: SetVal): Value {.inline.} =
+  newInt(toSeq(elements(a.value)).len)
+method size*(a: StringVal): Value {.inline.} =
+  newInt(a.value.len)
+
+proc uncons*(a: Value): (Value, Value) {.inline.} =
+  (first(a), rest(a))
