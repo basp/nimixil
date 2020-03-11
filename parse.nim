@@ -11,16 +11,11 @@ proc advance(p: Parser) =
   p.nextTok = p.s.nextToken()
 
 var reserved = initTable[string, proc(): Value]()
-reserved.add("true", proc(): Value =
-  newBool(true))
-reserved.add("false", proc(): Value =
-  newBool(false))
-reserved.add("pi", proc(): Value =
-  newFloat(math.PI))
-reserved.add("tau", proc(): Value =
-  newFloat(math.TAU))
-reserved.add("e", proc(): Value =
-  newFloat(math.E))
+reserved.add("true", proc(): Value = newBool(true))
+reserved.add("false", proc(): Value = newBool(false))
+reserved.add("pi", proc(): Value = newFloat(math.PI))
+reserved.add("tau", proc(): Value = newFloat(math.TAU))
+reserved.add("e", proc(): Value = newFloat(math.E))
 
 proc parseIdent(p: Parser): Value =
   if reserved.hasKey(p.curTok.lexeme):
@@ -31,8 +26,8 @@ proc parseIdent(p: Parser): Value =
 
 proc parseChar(p: Parser): Value =
   # TODO:
-  # fancier string to char conversion;
-  # this assumes char literals like 'c'
+  # fancier string to char conversion; this 
+  # assumes all char literals look like 'c'
   proc convert(s: string): char = s[1]
   let c = convert(p.curTok.lexeme)
   result = newChar(c)
@@ -58,8 +53,7 @@ proc parseNumber(p: Parser): Value =
     p.advance()
     return
   # if we can't parse it as an int we'll
-  # try to parse it as a float instead,
-  # if that doesn't work we'll raise an error
+  # force parse it as a float instead
   try:
     let f = parseFloat(p.curTok.lexeme)
     result = newFloat(f)

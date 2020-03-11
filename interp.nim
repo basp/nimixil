@@ -52,6 +52,12 @@ const
   UNSWONS = "unswons"
   NULL = "null"
   SMALL = "small"
+  GT = "gt"
+  LT = "lt"
+  GTE = "gte"
+  LTE = "lte"
+  EQ = "eq"
+  NEQ = "neq"
   I = "i"
   X = "x" 
   DIP = "dip"
@@ -63,12 +69,12 @@ const
   UNARY2 = "unary2"
   UNARY3 = "unary3"
   UNARY4 = "unary4"
+  MAP = "map"
 
 var 
   stack* = initSinglyLinkedList[Value]()
   saved = initSinglyLinkedList[Value]()
 
-# template saved1() = saved.head
 template saved2() = saved.head.next
 template saved3() = saved.head.next.next
 template saved4() = saved.head.next.next.next
@@ -171,6 +177,9 @@ proc aggregate(name: string) {.inline.} =
 
 proc aggregateAsSecond(name: string) {.inline.} =
   doAssert stack.head.next.value.aggregate
+
+proc listAsSecond(name: string) {.inline.} =
+  doAssert stack.head.next.value.list
 
 proc oneQuote(name: string) {.inline.} =
   doAssert stack.head.value.list, name
@@ -401,6 +410,27 @@ proc opSmall(name: auto) {.inline.} =
   let x = pop()
   push(small(x))
 
+template cmpop(op: untyped, name: auto) =
+  twoParameters(name)
+  let y = pop()
+  let x = pop()
+  push(newBool(op(cmp(x, y).value, 0)))
+
+proc opLt(name: auto) {.inline.} = cmpop(`<`, name)
+proc opGt(name: auto) {.inline.} = cmpop(`>`, name)
+proc opLte(name: auto) {.inline.} = cmpop(`<=`, name)
+proc opGte(name: auto) {.inline.} = cmpop(`>=`, name)
+
+proc opEq(name: auto) =
+  let y = pop()
+  let x = pop()
+  push(newBool(x == y))
+
+proc opNeq(name: auto) {.inline.} =
+  opEq(name)
+  let x = pop()
+  push(x.not)
+
 proc opI(name: auto) {.inline.} =
   oneParameter(name)
   oneQuote(name)
@@ -500,6 +530,22 @@ proc opUnary4(name: auto) =
   push(pz)
   push(pw)
 
+proc opMap(name: auto) =
+  twoParameters(name)
+  oneQuote(name)
+  listAsSecond(name)
+  saved = stack
+  let b = newList(@[])
+  let p = popt[ListVal]()
+  let a = popt[ListVal]()
+  for x in a.elements:
+    push(x)
+    execterm(p)
+    b.elements.append(pop())
+    stack = saved
+  stack.head = saved3
+  push(b)
+
 method eval*(x: Value) {.base.} =
   push(x)
 
@@ -556,6 +602,12 @@ method eval*(x: IdentVal) =
   of UNSWONS: opUnswons(UNSWONS)
   of NULL: opNull(NULL)
   of SMALL: opSmall(SMALL)
+  of GT: opGt(GT)
+  of LT: opLt(LT)
+  of GTE: opGte(GTE)
+  of LTE: opLte(LTE)
+  of EQ: opEq(EQ)
+  of NEQ: opNeq(NEQ)
   of I: opI(I)
   of X: opX(X)
   of DIP: opDip(DIP)
@@ -567,6 +619,7 @@ method eval*(x: IdentVal) =
   of UNARY2: opUnary2(UNARY2)
   of UNARY3: opUnary3(UNARY3)
   of UNARY4: opUnary4(UNARY4)
+  of MAP: opMap(MAP)
   else:
     let msg = "undefined symbol `" & $x & "`"
     raiseRuntimeError(msg)

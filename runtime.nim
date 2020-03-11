@@ -43,7 +43,7 @@ proc remove*(s: int, x: range[0..SETSIZE-1]): int =
 proc contains*(s: int, x: range[0..SETSIZE-1]): bool =
   (s and (1 shl x)) > 0
 
-iterator elements*(s: int): int =
+iterator items*(s: int): int =
   for i in 0..<SETSIZE:
     if s.contains(i):
       yield i
@@ -69,7 +69,7 @@ proc newIdent*(x: string): Value {.inline.} =
 proc newSet*(x: int): Value {.inline.} =
   SetVal(value: x)
 
-proc newList*(xs: seq[Value]): Value {.inline.} =
+proc newList*(xs: seq[Value]): ListVal {.inline.} =
   var list = initSinglyLinkedList[Value]()
   for x in xs: list.append(x)
   ListVal(elements: list)
@@ -123,37 +123,41 @@ method `$`*(self: IdentVal): string {.inline.} =
 method `$`*(self: ListVal): string {.inline.} =
   $self.elements
 method `$`*(self: SetVal): string {.inline.} =
-  var xs = toSeq(elements(self.value))
+  var xs = toSeq(items(self.value))
   "{" & strutils.join(xs, " ") & "}"
 
 proc badarg(name: string, x: Value) =
   let msg = fmt"badarg: {name} does not support argument {x}"
   raiseRuntimeError(msg)
 
-method cmp*(a: Value, b: Value): Value {.base, inline.} =
-  raiseRuntimeError("TILT cmp")
-method cmp*(a: IntVal, b: IntVal): Value {.inline.} =
-  newInt(cmp(a.value, b.value))
-method cmp*(a: IntVal, b: FloatVal): Value {.inline.} =
-  newInt(cmp(a.value.float, b.value))
-method cmp*(a: FloatVal, b: IntVal): Value {.inline.} =
-  newInt(cmp(a.value, b.value.float))
-method cmp*(a: BoolVal, b: BoolVal): Value {.inline.} =
-  newInt(cmp(a.value, b.value))
-method cmp*(a: BoolVal, b: IntVal): Value {.inline.} =
-  newInt(cmp(ord(a.value), b.value))
-method cmp*(a: IntVal, b: BoolVal): Value {.inline.} =
-  newInt(cmp(a.value, ord(b.value)))
-method cmp*(a: BoolVal, b: CharVal): Value {.inline.} =
-  newInt(cmp(ord(a.value), ord(b.value)))
-method cmp*(a: CharVal, b: BoolVal): Value {.inline.} =
-  newInt(cmp(ord(a.value), ord(b.value)))
-method cmp*(a: CharVal, b: CharVal): Value {.inline.} =
-  newInt(cmp(a.value, b.value))
-method cmp*(a: CharVal, b: IntVal): Value {.inline.} =
-  newInt(cmp(ord(a.value), b.value))
-method cmp*(a: IntVal, b: CharVal): Value {.inline.} =
-  newInt(cmp(a.value, ord(b.value)))
+method `==`*(a: Value, b: Value): bool {.base, inline.} = false
+method `==`*(a: IntVal, b: IntVal): bool {.inline.} =
+  a.value == b.value
+method `==`*(a: IntVal, b: FloatVal): bool {.inline.} =
+  a.value.float == b.value
+method `==`*(a: FloatVal, b: IntVal): bool {.inline.} =
+  a.value == b.value.float
+method `==`*(a: FloatVal, b: FloatVal): bool {.inline.} =
+  a.value == b.value
+method `==`*(a: BoolVal, b: BoolVal): bool {.inline.} =
+  a.value == b.value
+method `==`*(a: CharVal, b: CharVal): bool {.inline.} =
+  a.value == b.value
+method `==`*(a: StringVal, b: StringVal): bool {.inline.} =
+  a.value == b.value
+method `==`*(a: SetVal, b: SetVal): bool {.inline.} =
+  a.value == b.value
+method `==`*(a: ListVal, b: ListVal): bool {.inline.} =
+  var x = a.elements.head
+  var y = b.elements.head
+  while x != nil and y != nil:
+    if x.value != y.value:
+      return false
+    x = x.next
+    y = y.next
+  true
+
+proc `!=`*(a: Value, b: Value): bool = not (a == b)
 
 method `or`*(a: Value, b: Value): Value {.base, inline.} =
   raiseRuntimeError("TILT or")
@@ -413,7 +417,7 @@ method first*(a: Value): Value {.base, inline.} =
 method first*(a: ListVal): Value {.inline.} =
   a.elements.head.value.clone
 method first*(a: SetVal): Value {.inline.} =
-  newInt(toSeq(elements(a.value))[0])
+  newInt(toSeq(items(a.value))[0])
 method first*(a: StringVal): Value {.inline.} =
   newChar(a.value[0])
 
@@ -424,7 +428,7 @@ method rest*(a: ListVal): Value {.inline.} =
   list.head = a.elements.head.next
   newList(list)
 method rest*(a: SetVal): Value {.inline.} =
-  let first = toSeq(elements(a.value))[0]
+  let first = toSeq(items(a.value))[0]
   newSet(remove(a.value, first))
 
 method at*(a: Value, i: IntVal): Value {.base, inline.} =
@@ -432,7 +436,7 @@ method at*(a: Value, i: IntVal): Value {.base, inline.} =
 method at*(a: ListVal, i: IntVal): Value {.inline.} =
   toSeq(a.elements.items)[i.value]
 method at*(a: SetVal, i: IntVal): Value {.inline.} =
-  newInt(toSeq(elements(a.value))[i.value])
+  newInt(toSeq(items(a.value))[i.value])
 method at*(a: StringVal, i: IntVal): Value {.inline.} =
   newChar(a.value[i.value])
 
@@ -441,7 +445,7 @@ method size*(a: Value): IntVal {.base, inline.} =
 method size*(a: ListVal): IntVal {.inline.} =
   newInt(toSeq(a.elements.items).len)
 method size*(a: SetVal): IntVal {.inline.} =
-  newInt(toSeq(elements(a.value)).len)
+  newInt(toSeq(items(a.value)).len)
 method size*(a: StringVal): IntVal {.inline.} =
   newInt(a.value.len)
 
@@ -460,34 +464,71 @@ method one*(x: FloatVal): bool {.inline.} = x.value == 1
 method one*(x: BoolVal): bool {.inline.} = ord(x.value) == 1
 method one*(x: CharVal): bool {.inline.} = ord(x.value) == 1
 
-method null*(x: Value): BoolVal {.base, inline.} = 
+method null*(x: Value): BoolVal {.base, inline.} =
   newBool(false)
-method null*(x: ListVal): BoolVal {.inline.} = 
+method null*(x: ListVal): BoolVal {.inline.} =
   newBool(size(x).value == 0)
-method null*(x: SetVal): BoolVal {.inline.} = 
+method null*(x: SetVal): BoolVal {.inline.} =
   newBool(size(x).value == 0)
-method null*(x: StringVal): BoolVal {.inline.} = 
+method null*(x: StringVal): BoolVal {.inline.} =
   newBool(size(x).value == 0)
-method null*(x: IntVal): BoolVal {.inline.} = 
+method null*(x: IntVal): BoolVal {.inline.} =
   newBool(zero(x))
-method null*(x: FloatVal): BoolVal {.inline.} = 
+method null*(x: FloatVal): BoolVal {.inline.} =
   newBool(zero(x))
-method null*(x: BoolVal): BoolVal {.inline.} = 
+method null*(x: BoolVal): BoolVal {.inline.} =
   newBool(zero(x))
 
-method small*(x: Value): BoolVal {.base, inline.} = 
+method small*(x: Value): BoolVal {.base, inline.} =
   newBool(false)
-method small*(x: IntVal): BoolVal {.inline.} = 
+method small*(x: IntVal): BoolVal {.inline.} =
   newBool(zero(x) or one(x))
-method small*(x: FloatVal): BoolVal {.inline.} = 
+method small*(x: FloatVal): BoolVal {.inline.} =
   newBool(zero(x) or one(x))
-method small*(x: BoolVal): BoolVal {.inline.} = 
+method small*(x: BoolVal): BoolVal {.inline.} =
   newBool(zero(x) or one(x))
-method small*(x: CharVal): BoolVal {.inline.} = 
+method small*(x: CharVal): BoolVal {.inline.} =
   newBool(zero(x) or one(x))
-method small*(x: StringVal): BoolVal {.inline.} = 
+method small*(x: StringVal): BoolVal {.inline.} =
   newBool(size(x).value < 2)
-method small*(x: ListVal): BoolVal {.inline.} = 
+method small*(x: ListVal): BoolVal {.inline.} =
   newBool(size(x).value < 2)
-method small*(x: SetVal): BoolVal {.inline.} = 
+method small*(x: SetVal): BoolVal {.inline.} =
   newBool(size(x).value < 2)
+
+method cmp*(a: Value, b: Value): IntVal {.base, inline.} =
+  raiseRuntimeError("TILT cmp")
+method cmp*(a: IntVal, b: IntVal): IntVal {.inline.} =
+  newInt(cmp(a.value, b.value))
+method cmp*(a: IntVal, b: FloatVal): IntVal {.inline.} =
+  newInt(cmp(a.value.float, b.value))
+method cmp*(a: FloatVal, b: IntVal): IntVal {.inline.} =
+  newInt(cmp(a.value, b.value.float))
+method cmp*(a: BoolVal, b: BoolVal): IntVal {.inline.} =
+  newInt(cmp(a.value, b.value))
+method cmp*(a: BoolVal, b: IntVal): IntVal {.inline.} =
+  newInt(cmp(ord(a.value), b.value))
+method cmp*(a: IntVal, b: BoolVal): IntVal {.inline.} =
+  newInt(cmp(a.value, ord(b.value)))
+method cmp*(a: BoolVal, b: CharVal): IntVal {.inline.} =
+  newInt(cmp(ord(a.value), ord(b.value)))
+method cmp*(a: CharVal, b: BoolVal): IntVal {.inline.} =
+  newInt(cmp(ord(a.value), ord(b.value)))
+method cmp*(a: CharVal, b: CharVal): IntVal {.inline.} =
+  newInt(cmp(a.value, b.value))
+method cmp*(a: CharVal, b: IntVal): IntVal {.inline.} =
+  newInt(cmp(ord(a.value), b.value))
+method cmp*(a: IntVal, b: CharVal): IntVal {.inline.} =
+  newInt(cmp(a.value, ord(b.value)))
+method cmp*(a: SetVal, b: SetVal): IntVal {.inline.} =
+  newInt(cmp(a.value, b.value))
+method cmp*(a: StringVal, b: StringVal): IntVal {.inline.} =
+  newInt(cmp(a.value, b.value))
+method cmp*(a: ListVal, b: ListVal): IntVal {.inline.} =
+  if a.size > b.size:
+    return newInt(1)
+  elif a.size < b.size:
+    return newInt(-1)
+  else:
+    return newInt(0) # TODO
+      
