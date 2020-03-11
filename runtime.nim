@@ -1,4 +1,4 @@
-import strutils, math, lists, sequtils
+import strutils, strformat, math, lists, sequtils
 
 const SETSIZE = 32
 
@@ -126,6 +126,10 @@ method `$`*(self: SetVal): string {.inline.} =
   var xs = toSeq(elements(self.value))
   "{" & strutils.join(xs, " ") & "}"
 
+proc badarg(name: string, x: Value) =
+  let msg = fmt"badarg: {name} does not support argument {x}"
+  raiseRuntimeError(msg)
+
 method cmp*(a: Value, b: Value): Value {.base, inline.} =
   raiseRuntimeError("TILT cmp")
 method cmp*(a: IntVal, b: IntVal): Value {.inline.} =
@@ -173,7 +177,7 @@ method `and`*(a: SetVal, b: SetVal): Value {.inline.} =
   newSet(a.value and b.value)
 
 method `not`*(a: Value): Value {.base, inline.} =
-  raiseRuntimeError("TILT not")
+  badarg("not", a)
 method `not`*(a: BoolVal): Value {.inline.} =
   newBool(not a.value)
 method `not`*(a: Setval): Value {.inline.} =
@@ -456,19 +460,34 @@ method one*(x: FloatVal): bool {.inline.} = x.value == 1
 method one*(x: BoolVal): bool {.inline.} = ord(x.value) == 1
 method one*(x: CharVal): bool {.inline.} = ord(x.value) == 1
 
-method null*(x: Value): BoolVal {.base, inline.} = newBool(false)
-method null*(x: ListVal): BoolVal {.inline.} = newBool(size(x).value == 0)
-method null*(x: SetVal): BoolVal {.inline.} = newBool(size(x).value == 0)
-method null*(x: StringVal): BoolVal {.inline.} = newBool(size(x).value == 0)
-method null*(x: IntVal): BoolVal {.inline.} = newBool(zero(x))
-method null*(x: FloatVal): BoolVal {.inline.} = newBool(zero(x))
-method null*(x: BoolVal): BoolVal {.inline.} = newBool(zero(x))
+method null*(x: Value): BoolVal {.base, inline.} = 
+  newBool(false)
+method null*(x: ListVal): BoolVal {.inline.} = 
+  newBool(size(x).value == 0)
+method null*(x: SetVal): BoolVal {.inline.} = 
+  newBool(size(x).value == 0)
+method null*(x: StringVal): BoolVal {.inline.} = 
+  newBool(size(x).value == 0)
+method null*(x: IntVal): BoolVal {.inline.} = 
+  newBool(zero(x))
+method null*(x: FloatVal): BoolVal {.inline.} = 
+  newBool(zero(x))
+method null*(x: BoolVal): BoolVal {.inline.} = 
+  newBool(zero(x))
 
-method small*(x: Value): BoolVal {.base, inline.} = newBool(false)
-method small*(x: IntVal): BoolVal {.inline.} = newBool(zero(x) or one(x))
-method small*(x: FloatVal): BoolVal {.inline.} = newBool(zero(x) or one(x))
-method small*(x: BoolVal): BoolVal {.inline.} = newBool(zero(x) or one(x))
-method small*(x: CharVal): BoolVal {.inline.} = newBool(zero(x) or one(x))
-method small*(x: StringVal): BoolVal {.inline.} = newBool(size(x).value < 2)
-method small*(x: ListVal): BoolVal {.inline.} = newBool(size(x).value < 2)
-method small*(x: SetVal): BoolVal {.inline.} = newBool(size(x).value < 2)
+method small*(x: Value): BoolVal {.base, inline.} = 
+  newBool(false)
+method small*(x: IntVal): BoolVal {.inline.} = 
+  newBool(zero(x) or one(x))
+method small*(x: FloatVal): BoolVal {.inline.} = 
+  newBool(zero(x) or one(x))
+method small*(x: BoolVal): BoolVal {.inline.} = 
+  newBool(zero(x) or one(x))
+method small*(x: CharVal): BoolVal {.inline.} = 
+  newBool(zero(x) or one(x))
+method small*(x: StringVal): BoolVal {.inline.} = 
+  newBool(size(x).value < 2)
+method small*(x: ListVal): BoolVal {.inline.} = 
+  newBool(size(x).value < 2)
+method small*(x: SetVal): BoolVal {.inline.} = 
+  newBool(size(x).value < 2)
