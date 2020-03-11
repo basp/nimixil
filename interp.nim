@@ -6,14 +6,23 @@ const SWAP = "swap"
 const ROLLUP = "rollup"
 const ROLLDOWN = "rolldown"
 const ROTATE = "rotate"
+const OR ="or"
+const XOR = "xor"
+const AND = "and"
+const NOT = "not"
 const ADD = "+"
 const SUB = "-"
 const MUL = "*"
-const DIV = "/"
+const DIVF = "/"
+const REM = "rem"
+const DIV = "div"
+const SIGN = "sign"
+const NEG = "neg"
+const ORD = "ord"
+const CHR = "chr"
+const ABS = "abs"
 const MIN = "min"
 const MAX = "max"
-const NOT = "not"
-const NEG = "neg"
 const SQRT = "sqrt"
 const SIN = "sin"
 const ASIN = "asin"
@@ -30,10 +39,26 @@ const PUTS = "puts"
 const I = "i"
 const X = "x" 
 const DIP = "dip"
+const APP1 = "app1"
+const NULLARY = "nullary"
+const UNARY = "unary"
+const BINARY = "binary"
+const TERNARY = "ternary"
+const UNARY2 = "unary2"
+const UNARY3 = "unary3"
+const UNARY4 = "unary4"
 
 var stack* = initSinglyLinkedList[Value]()
+var saved = initSinglyLinkedList[Value]()
 
-method eval*(x: Value) {.base.}
+# template saved1() = saved.head
+template saved2() = saved.head.next
+template saved3() = saved.head.next.next
+template saved4() = saved.head.next.next.next
+template saved5() = saved.head.next.next.next.next
+template saved6() = saved.head.next.next.next.next.next
+
+method eval*(x: Value) {.base,locks:0.}
 
 proc exeterm(p: ListVal) =
   for x in p.elements:
@@ -60,8 +85,22 @@ method floatable(x: Value): bool {.base,inline.} = false
 method floatable(x: IntVal): bool {.inline.} = true
 method floatable(x: FloatVal): bool {.inline.} = true
 
+method integer(x: Value): bool {.base,inline.} = false
+method integer(x: IntVal): bool {.inline.} = true
+
 method logical(x: Value): bool {.base,inline.} = false
 method logical(x: BoolVal): bool {.inline.} = true
+method logical(x: SetVal): bool {.inline.} = true
+
+method ordinal(x: Value): bool {.base,inline.} = false
+method ordinal(x: BoolVal): bool {.inline.} = true
+method ordinal(x: IntVal): bool {.inline.} = true
+method ordinal(x: CharVal): bool {.inline.} = true
+
+method aggregate(x: Value): bool {.base,inline.} = false
+method aggregate(x: ListVal): bool {.inline.} = true
+method aggregate(x: SetVal): bool {.inline.} = true
+method aggregate(x: StringVal): bool {.inline.} = true
 
 method list(x: Value): bool {.base,inline.} = false
 method list(x: ListVal): bool {.inline.} = true
@@ -73,6 +112,22 @@ proc twoParameters(name: string) {.inline.} =
   oneParameter(name)
   doAssert stack.head.next != nil, name
 
+proc threeParameters(name: string) {.inline.} =
+  twoParameters(name)
+  doAssert stack.head.next.next != nil, name
+
+proc fourParameters(name: string) {.inline.} =
+  threeParameters(name)
+  doAssert stack.head.next.next.next != nil, name
+
+proc fiveParameters(name: string) {.inline.} =
+  fourParameters(name)
+  doAssert stack.head.next.next.next.next != nil, name
+
+proc twoIntegers(name: string) {.inline.} =
+  doAssert stack.head.value.integer, name
+  doAssert stack.head.next.value.integer, name
+
 proc integerOrFloat(name: string) {.inline.} =
   doAssert stack.head.value.floatable, name
 
@@ -82,7 +137,13 @@ proc integerOrFloatAsSecond(name: string) {.inline.} =
 proc logical(name: string) {.inline.} =
   doAssert stack.head.value.logical, name
 
-proc quote(name: string) =
+proc logicalAsSecond(name: string) {.inline.} =
+  doAssert stack.head.next.value.logical, name
+
+proc ordinal(name: string) {.inline.} =
+  doAssert stack.head.value.ordinal, name
+
+proc oneQuote(name: string) =
   doAssert stack.head.value.list, name
 
 template unary(op: untyped, name: string) =
@@ -105,39 +166,112 @@ template bifloatop(op: untyped, name: string) =
   integerOrFloatAsSecond(name)
   binary(op, name)
 
+template bilogicop(op: untyped, name: string) =
+  twoParameters(name)
+  logical(name)
+  logicalAsSecond(name)
+  binary(op, name)
+
 proc opId() {.inline.} = discard
 
-proc opAdd(name: auto) {.inline.} = bifloatop(`+`, name)
-proc opSub(name: auto) {.inline.} = bifloatop(`-`, name)
-proc opMul(name: auto) {.inline.} = bifloatop(`*`, name)
-proc opDiv(name: auto) {.inline.} = bifloatop(`/`, name)
+proc opDup(name: auto) {.inline.} = 
+  oneParameter(name)
+  push(peek().clone)
 
-proc opMin(name: auto) {.inline.} = bifloatop(`min`, name)
-proc opMax(name: auto) {.inline.} = bifloatop(`max`, name)
+# X Y  ->  Y X
+proc opSwap(name: auto) {.inline.} =
+  twoParameters(name)
+  let y = pop()
+  let x = pop()
+  push(y)
+  push(x)
 
-proc opSqrt(name: auto) {.inline.} = unfloatop(`sqrt`, name)
-proc opSin(name: auto) {.inline.} = unfloatop(`sin`, name)
-proc opCos(name: auto) {.inline.} = unfloatop(`cos`, name)
-proc opTan(name: auto) {.inline.} = unfloatop(`tan`, name)
-proc opAsin(name: auto) {.inline.} = unfloatop(`asin`, name)
-proc opAcos(name: auto) {.inline.} = unfloatop(`acos`, name)
-proc opAtan(name: auto) {.inline.} = unfloatop(`atan`, name)
-proc opSinh(name: auto) {.inline.} = unfloatop(`sinh`, name)
-proc opCosh(name: auto) {.inline.} = unfloatop(`cosh`, name)
-proc opTanh(name: auto) {.inline.} = unfloatop(`tanh`, name)
+# X Y Z  ->  Z X Y
+proc opRollup(name: auto) {.inline.} =
+  threeParameters(name)
+  let z = pop()
+  let y = pop()
+  let x = pop()
+  push(z)
+  push(x)
+  push(y)
+
+# X Y Z  ->  Y Z X
+proc opRolldown(name: auto) {.inline.} =
+  threeParameters(name)
+  let z = pop()
+  let y = pop()
+  let x = pop()
+  push(y)
+  push(z)
+  push(x)
+
+# X Y Z  ->  Z Y X
+proc opRotate(name: auto) {.inline.} =
+  threeParameters(name)
+  let z = pop()
+  let y = pop()
+  let x = pop()
+  push(z)
+  push(y)
+  push(x)
+
+proc opPop(name: auto): Value {.inline.} =
+  oneParameter(name)
+  pop() 
+
+proc opOr(name: auto) {.inline.} = bilogicop(`or`, name)
+proc opXor(name: auto) {.inline.} = bilogicop(`xor`, name)
+proc opAnd(name: auto) {.inline.} = bilogicop(`and`, name)
 
 proc opNot(name: auto) {.inline.} =
   oneParameter(name)
   logical(name)
-  unary(`not`, name)
+  unary(`not`, name) 
+  
+proc opAdd(name: auto) {.inline.} = bifloatop(`+`, name)
+proc opSub(name: auto) {.inline.} = bifloatop(`-`, name)
+proc opMul(name: auto) {.inline.} = bifloatop(`*`, name)
+proc opDivf(name: auto) {.inline.} = bifloatop(`/`, name)
 
-proc opNeg(name: auto) {.inline.} =
-  integerOrFloat(name)
-  unary(`neg`, name)
+proc opRem(name: auto) {.inline.} = bifloatop(`mod`, name)
 
-proc opPop*(name: auto): Value {.inline.} =
+proc opDiv(name: auto) {.inline.} =
+  twoParameters(name)
+  twoIntegers(name)
+  let j = popt[IntVal]()
+  let i = popt[IntVal]()
+  let (k, l) = `div`(i, j)
+  push(k)
+  push(l)
+
+proc opSign(name: auto) {.inline.} = unfloatop(sign, name)
+proc opNeg(name: auto) {.inline.} = unfloatop(sign, name)
+
+template unordop(op: untyped, name: auto) =
   oneParameter(name)
-  pop()
+  ordinal(name)
+  let x = pop()
+  push(op(x))
+
+proc opOrd(name: auto) {.inline.} = unordop(ord, name)
+proc opChr(name: auto) {.inline.} = unordop(chr, name)
+
+proc opAbs(name: auto) {.inline.} = unfloatop(abs, name)
+
+proc opMin(name: auto) {.inline.} = bifloatop(min, name)
+proc opMax(name: auto) {.inline.} = bifloatop(max, name)
+
+proc opSqrt(name: auto) {.inline.} = unfloatop(sqrt, name)
+proc opSin(name: auto) {.inline.} = unfloatop(sin, name)
+proc opCos(name: auto) {.inline.} = unfloatop(cos, name)
+proc opTan(name: auto) {.inline.} = unfloatop(tan, name)
+proc opAsin(name: auto) {.inline.} = unfloatop(asin, name)
+proc opAcos(name: auto) {.inline.} = unfloatop(acos, name)
+proc opAtan(name: auto) {.inline.} = unfloatop(atan, name)
+proc opSinh(name: auto) {.inline.} = unfloatop(sinh, name)
+proc opCosh(name: auto) {.inline.} = unfloatop(cosh, name)
+proc opTanh(name: auto) {.inline.} = unfloatop(tanh, name)
 
 proc opPuts(name: auto) {.inline.} =
   oneParameter(name)
@@ -149,23 +283,104 @@ proc opPeek(name: string) {.inline.} =
   
 proc opI(name: auto) {.inline.} =
   oneParameter(name)
-  quote(name)
+  oneQuote(name)
   let p = popt[ListVal]()
   exeterm(p)
 
 proc opX(name: auto) {.inline.} =
   oneParameter(name)
-  quote(name)
+  oneQuote(name)
   let p = peekt[ListVal]()
   exeterm(p)
 
 proc opDip(name: auto) {.inline.} =
   twoParameters(name)
-  quote(name)
+  oneQuote(name)
   let p = popt[ListVal]()
   let x = pop()
   exeterm(p)
   push(x)
+
+proc opApp1(name: auto) {.inline.} =
+  twoParameters(name)
+  oneQuote(name)
+  let p = popt[ListVal]()
+  discard pop()
+  exeterm(p)
+
+# construct
+
+template nary(paramcount: untyped, name: auto, top: untyped) =
+  paramcount(name)
+  oneQuote(name)
+  saved = stack
+  let p = popt[ListVal]()
+  exeterm(p)
+  let x = peek()
+  stack.head = top
+  stack.prepend(x)
+
+proc opNullary(name: auto) {.inline.} = nary(oneParameter, name, saved2)
+proc opUnary(name: auto) {.inline.} = nary(twoParameters, name, saved3)
+proc opBinary(name: auto) {.inline.} = nary(threeParameters, name, saved4)
+proc opTernary(name: auto) {.inline.} = nary(fourParameters, name, saved5)
+
+proc opUnary2(name: auto) {.inline.} =
+  threeParameters(name)
+  oneQuote(name)
+  saved = stack
+  let p = popt[ListVal]()
+  stack.head = saved2
+  exeterm(p)
+  let py = peek()
+  stack.head = saved3
+  exeterm(p)
+  let px = peek()
+  stack.head = saved4
+  push(px)
+  push(py)
+
+proc opUnary3(name: auto) {.inline.} =
+  fourParameters(name)
+  oneQuote(name)
+  saved = stack
+  let p = popt[ListVal]()
+  stack.head = saved2
+  exeterm(p)
+  let pz = peek()
+  stack.head = saved3
+  exeterm(p)
+  let py = peek()
+  stack.head = saved4
+  exeterm(p)
+  let px = peek()
+  stack.head = saved5
+  push(px)
+  push(py)
+  push(pz)
+
+proc opUnary4(name: auto) {.inline.} =
+  fiveParameters(name)
+  oneQuote(name)
+  saved = stack
+  let p = popt[ListVal]()
+  stack.head = saved2
+  exeterm(p)
+  let pw = peek()
+  stack.head = saved3
+  exeterm(p)
+  let pz = peek()
+  stack.head = saved4
+  exeterm(p)
+  let py = peek()
+  stack.head = saved5
+  exeterm(p)
+  let px = peek()
+  stack.head = saved6
+  push(px)
+  push(py)
+  push(pz)
+  push(pw)
 
 method eval*(x: Value) {.base.} =
   push(x)
@@ -173,14 +388,28 @@ method eval*(x: Value) {.base.} =
 method eval*(x: IdentVal) =
   case x.value
   of ID: opId()
+  of DUP: opDup(DUP)
+  of SWAP: opSwap(SWAP)
+  of ROLLUP: opRollup(ROLLUP)
+  of ROLLDOWN: opRolldown(ROLLDOWN)
+  of ROTATE: opRotate(ROTATE)
+  of OR: opOr(OR)
+  of XOR: opXor(XOR)
+  of AND: opAnd(AND)
+  of NOT: opNot(NOT)
   of ADD: opAdd(ADD)
   of SUB: opSub(SUB)
   of MUL: opMul(MUL)
+  of DIVF: opDivf(DIVF)
+  of REM: opRem(REM)
   of DIV: opDiv(DIV)
+  of SIGN: opSign(SIGN)
+  of NEG: opNeg(NEG)
+  of ORD: opOrd(ORD)
+  of CHR: opChr(CHR)
+  of ABS: opAbs(ABS)
   of MIN: opMin(MIN)
   of MAX: opMAX(MAX)
-  of NOT: opNot(NOT)
-  of NEG: opNeg(NEG)
   of SQRT: opSqrt(SQRT)
   of SIN: opSin(SIN)
   of COS: opCos(COS)
@@ -194,6 +423,14 @@ method eval*(x: IdentVal) =
   of I: opI(I)
   of X: opX(X)
   of DIP: opDip(DIP)
+  of APP1: opApp1(APP1)
+  of NULLARY: opNullary(NULLARY)
+  of UNARY: opUnary(UNARY)
+  of BINARY: opBinary(BINARY)
+  of TERNARY: opTernary(TERNARY)
+  of UNARY2: opUnary2(UNARY2)
+  of UNARY3: opUnary3(UNARY3)
+  of UNARY4: opUnary4(UNARY4)
   of PEEK: opPeek(PEEK)
   of PUTS: opPuts(PUTS)
   of POP: discard opPop(POP)
