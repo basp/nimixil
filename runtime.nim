@@ -21,6 +21,15 @@ type
   ListVal* = ref object of Value
     elements*: SinglyLinkedList[Value]
 
+method isThruthy*(x: Value): bool {.base,inline.} = false
+method isThruthy*(x: IntVal): bool {.inline.} = x.value != 0
+method isThruthy*(x: FloatVal): bool {.inline.} = x.value != 0
+method isThruthy*(x: StringVal): bool {.inline.} = len(x.value) > 0
+method isThruthy*(x: BoolVal): bool {.inline.} = x.value
+method isThruthy*(x: ListVal): bool {.inline.} = x.elements.head != nil
+method isThruthy*(x: SetVal): bool {.inline.} = x.value > 0
+method isThruthy*(x: CharVal): bool {.inline.} = ord(x.value) > 0
+
 proc add*(s: int, x: range[0..SETSIZE-1]): int = 
   s or (1 shl x)
 
@@ -309,6 +318,24 @@ method tan*(a: FloatVal): Value {.inline.} =
 
 method tanh*(a: Value): Value {.base.} =
   raise newException(Exception, "TILT tanh")
+
+method pred*(a: Value): Value {.base,inline.} =
+  raise newException(Exception, "TILT pred")
+method pred*(a: BoolVal): Value {.inline.} =
+  newBool(pred(a.value))
+method pred*(a: CharVal): Value {.inline.} =
+  newChar(pred(a.value))
+method pred*(a: IntVal): Value {.inline.} =
+  newInt(pred(a.value))
+
+method succ*(a: Value): Value {.base,inline.} =
+  raise newException(Exception, "TILT succ")
+method succ*(a: BoolVal): Value {.inline.} =
+  newBool(succ(a.value))
+method succ*(a: CharVal): Value {.inline.} =
+  newChar(succ(a.value))
+method succ*(a: IntVal): Value {.inline.} =
+  newInt(succ(a.value))
 
 method max*(a: Value, b: Value): Value {.base,inline.} =
   raise newException(Exception, "TILT max")

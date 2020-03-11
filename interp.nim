@@ -1,57 +1,62 @@
 import lists, runtime
 
-const ID = "id"
-const DUP = "dup"
-const SWAP = "swap"
-const ROLLUP = "rollup"
-const ROLLDOWN = "rolldown"
-const ROTATE = "rotate"
-const OR ="or"
-const XOR = "xor"
-const AND = "and"
-const NOT = "not"
-const ADD = "+"
-const SUB = "-"
-const MUL = "*"
-const DIVF = "/"
-const REM = "rem"
-const DIV = "div"
-const SIGN = "sign"
-const NEG = "neg"
-const ORD = "ord"
-const CHR = "chr"
-const ABS = "abs"
-const MIN = "min"
-const MAX = "max"
-const SQRT = "sqrt"
-const SIN = "sin"
-const ASIN = "asin"
-const SINH = "sinh"
-const COS = "cos"
-const ACOS = "acos"
-const COSH = "cosh"
-const TAN = "tan"
-const ATAN = "atan"
-const TANH = "tanh"
-const POP = "pop"
-const PEEK = "peek"
-const PUTS = "puts"
-const CONS = "cons"
-const SWONS = "swons"
-const I = "i"
-const X = "x" 
-const DIP = "dip"
-const APP1 = "app1"
-const NULLARY = "nullary"
-const UNARY = "unary"
-const BINARY = "binary"
-const TERNARY = "ternary"
-const UNARY2 = "unary2"
-const UNARY3 = "unary3"
-const UNARY4 = "unary4"
+const 
+  ID = "id"
+  DUP = "dup"
+  SWAP = "swap"
+  ROLLUP = "rollup"
+  ROLLDOWN = "rolldown"
+  ROTATE = "rotate"
+  POP = "pop"
+  CHOICE = "choice"
+  OR ="or"
+  XOR = "xor"
+  AND = "and"
+  NOT = "not"
+  ADD = "+"
+  SUB = "-"
+  MUL = "*"
+  DIVF = "/"
+  REM = "rem"
+  DIV = "div"
+  SIGN = "sign"
+  NEG = "neg"
+  ORD = "ord"
+  CHR = "chr"
+  ABS = "abs"
+  ACOS = "acos"
+  ASIN = "asin"
+  ATAN = "atan"
+  COS = "cos"
+  COSH = "cosh"
+  SIN = "sin"
+  SINH = "sinh"
+  SQRT = "sqrt"
+  TAN = "tan"
+  TANH = "tanh"
+  PRED = "pred"
+  SUCC = "succ"
+  MAX = "max"
+  MIN = "min"
+  PEEK = "peek"
+  PUTS = "puts"
+  CONS = "cons"
+  SWONS = "swons"
+  I = "i"
+  X = "x" 
+  DIP = "dip"
+  APP1 = "app1"
+  NULLARY = "nullary"
+  UNARY = "unary"
+  BINARY = "binary"
+  TERNARY = "ternary"
+  UNARY2 = "unary2"
+  UNARY3 = "unary3"
+  UNARY4 = "unary4"
 
-var stack* = initSinglyLinkedList[Value]()
-var saved = initSinglyLinkedList[Value]()
+var 
+  stack* = initSinglyLinkedList[Value]()
+  saved = initSinglyLinkedList[Value]()
 
 # template saved1() = saved.head
 template saved2() = saved.head.next
@@ -225,6 +230,16 @@ proc opPop(name: auto): Value {.inline.} =
   oneParameter(name)
   pop() 
 
+proc opChoice(name: auto) {.inline.} =
+  threeParameters(name)
+  let f = pop()
+  let t = pop()
+  let b = pop()
+  if isThruthy(b):
+    push(t)
+  else:
+    push(f)
+
 proc opOr(name: auto) {.inline.} = bilogicop(`or`, name)
 proc opXor(name: auto) {.inline.} = bilogicop(`xor`, name)
 proc opAnd(name: auto) {.inline.} = bilogicop(`and`, name)
@@ -277,6 +292,9 @@ proc opAtan(name: auto) {.inline.} = unfloatop(atan, name)
 proc opSinh(name: auto) {.inline.} = unfloatop(sinh, name)
 proc opCosh(name: auto) {.inline.} = unfloatop(cosh, name)
 proc opTanh(name: auto) {.inline.} = unfloatop(tanh, name)
+
+proc opPred(name: auto) {.inline.} = discard
+proc opSucc(name: auto) {.inline.} = discard
 
 proc opPuts(name: auto) {.inline.} =
   oneParameter(name)
@@ -407,6 +425,8 @@ method eval*(x: IdentVal) =
   of ROLLUP: opRollup(ROLLUP)
   of ROLLDOWN: opRolldown(ROLLDOWN)
   of ROTATE: opRotate(ROTATE)
+  of POP: discard opPop(POP)
+  of CHOICE: opChoice(CHOICE)
   of OR: opOr(OR)
   of XOR: opXor(XOR)
   of AND: opAnd(AND)
@@ -422,21 +442,22 @@ method eval*(x: IdentVal) =
   of ORD: opOrd(ORD)
   of CHR: opChr(CHR)
   of ABS: opAbs(ABS)
-  of MIN: opMin(MIN)
-  of MAX: opMAX(MAX)
-  of SQRT: opSqrt(SQRT)
-  of SIN: opSin(SIN)
-  of COS: opCos(COS)
-  of TAN: opTan(TAN)
-  of ASIN: opAsin(ASIN)
   of ACOS: opAcos(ACOS)
+  of ASIN: opAsin(ASIN)
   of ATAN: opAtan(ATAN)
-  of SINH: opSinh(SINH)
+  of COS: opCos(COS)
   of COSH: opCosh(COSH)
+  of SIN: opSin(SIN)
+  of SINH: opSinh(SINH)
+  of SQRT: opSqrt(SQRT)
+  of TAN: opTan(TAN)
   of TANH: opTanh(TANH)
+  of PRED: opPred(PRED)
+  of SUCC: opSucc(SUCC)
+  of MAX: opMax(MAX)
+  of MIN: opMin(MIN)
   of PEEK: opPeek(PEEK)
   of PUTS: opPuts(PUTS)
-  of POP: discard opPop(POP)
   of CONS: opCons(CONS)
   of SWONS: opSwons(SWONS)
   of I: opI(I)
