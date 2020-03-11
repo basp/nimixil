@@ -1,7 +1,7 @@
 # nimixil
 Xil in Nim. A learning experiment.
 
-> More info about (Xil)[https://github.com/basp/xil].
+> More info about [Xil](https://github.com/basp/xil).
 
 Lessons learned so far:
 * Since there are no decent parser combinators available for Nim this means that the scanner and parsers had to be written by hand. This turned out much better than I could ever hoped for.
