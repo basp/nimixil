@@ -1,8 +1,13 @@
 import lists
 
-var a = @[1,2,3]
-var b = a
-a.insert(4)
+var list = initSinglyLinkedList[int]()
 
-for x in a:
-  echo x
+list.prepend(123)
+list.prepend(456)
+
+var temp = list
+
+list.prepend(789)
+temp.prepend(list.head)
+
+echo temp

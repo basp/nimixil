@@ -45,7 +45,7 @@ proc parseString(p: Parser): Value =
 
 proc tryParseInt(s: string): (bool, int) =
   try:
-    let i = parseInt(s)
+    let i = strutils.parseInt(s)
     result = (true, i)
   except:
     result = (false, 0)
@@ -78,11 +78,23 @@ proc parseList(p: Parser): Value =
     terms.add(fac)
   if p.curTok.kind == tkRBrack:
     p.advance()
-  return newList(terms)
+  newList(terms)
+
+proc parseSet(p: Parser): Value =
+  var s = 0
+  p.advance()
+  while p.curTok.kind != tkRBrace:
+    let i = parseInt(p.curTok.lexeme)
+    s = add(s, i)
+    p.advance()
+  if p.curTok.kind == tkRBrace:
+    p.advance()
+  newSet(s)
 
 proc parseFactor(p: Parser): Value =
   case p.curTok.kind
   of tkLBrack: p.parseList()
+  of tkLBrace: p.parseSet()
   of tkNumber: p.parseNumber()
   of tkChar: p.parseChar()
   of tkString: p.parseString()

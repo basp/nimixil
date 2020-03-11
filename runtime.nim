@@ -1,4 +1,6 @@
-import strutils, math
+import strutils, math, lists
+
+const SETSIZE = 32
 
 type
   Value* = ref object of RootObj
@@ -17,7 +19,16 @@ type
   SetVal* = ref object of Value
     value: int
   ListVal* = ref object of Value
-    elements*: seq[Value]
+    elements*: SinglyLinkedList[Value]
+
+proc add*(s: int, x: range[0..SETSIZE-1]): int = 
+  s or (1 shl x)
+
+proc remove*(s: int, x: range[0..SETSIZE-1]): int = 
+  s and not (1 shl x) 
+
+proc contains*(s: int, x: range[0..SETSIZE-1]): bool =
+  (s and (1 shl x)) > 0  
 
 proc newBool*(x: bool): BoolVal {.inline.} =
   BoolVal(value: x)
@@ -40,8 +51,13 @@ proc newIdent*(x: string): Value {.inline.} =
 proc newSet*(x: int): Value {.inline.} =
   SetVal(value: x)
 
-proc newList*(x: seq[Value]): Value {.inline.} =
-  ListVal(elements: x)
+proc newList*(xs: seq[Value]): Value {.inline.} =
+  var list = initSinglyLinkedList[Value]()
+  for x in xs: list.append(x)
+  ListVal(elements: list)
+
+proc newList*(xs: SomeLinkedList[Value]): Value {.inline.} =
+  ListVal(elements: xs)
 
 proc newValue*(v: int): IntVal {.inline.} =
   IntVal(value: v)
@@ -76,16 +92,24 @@ method `$`*(self: Value): string {.base,inline.} =
   repr(self)
 method `$`*(self: IntVal): string {.inline.} =
   $self.value
-method `$`*(self: FloatVal): string {.inline.} =
-  $self.value
+method `$`*(self: CharVal): string {.inline.} =
+  repr(self.value)
 method `$`*(self: BoolVal): string {.inline.} =
+  $self.value
+method `$`*(self: FloatVal): string {.inline.} =
   $self.value
 method `$`*(self: StringVal): string {.inline.} =
   escape(self.value)
 method `$`*(self: IdentVal): string {.inline.} =
   self.value
-method `$`*(self: CharVal): string {.inline.} =
-  repr(self.value)
+method `$`*(self: ListVal): string {.inline.} =
+  $self.elements  
+method `$`*(self: SetVal): string {.inline.} =
+  var xs : seq[int] = @[]
+  for i in 0..<SETSIZE:
+    if self.value.contains(i):
+      xs.add(i)
+  "{" & strutils.join(xs, " ") & "}"
 
 method `or`*(a: Value, b: Value): Value {.base,inline.} =
   raise newException(Exception, "TILT or")
@@ -312,5 +336,12 @@ method cons*(x: Value, a: Value): Value {.base,inline.} =
   raise newException(Exception, "TILT cons")
 method cons*(x: Value, a: ListVal): Value {.inline.} =
   var xs = a.elements
-  xs.insert(x)
+  xs.append(x)
   newList(xs)
+method cons*(x: CharVal, a: StringVal): Value {.inline.} =
+  var str = a.value
+  str.insert($x.value)
+  newString(str)
+method cons*(x: IntVal, a: SetVal): Value {.inline.} =
+  let s = add(a.value, x.value)
+  newSet(s)

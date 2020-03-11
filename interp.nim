@@ -36,6 +36,8 @@ const TANH = "tanh"
 const POP = "pop"
 const PEEK = "peek"
 const PUTS = "puts"
+const CONS = "cons"
+const SWONS = "swons"
 const I = "i"
 const X = "x" 
 const DIP = "dip"
@@ -142,6 +144,9 @@ proc logicalAsSecond(name: string) {.inline.} =
 
 proc ordinal(name: string) {.inline.} =
   doAssert stack.head.value.ordinal, name
+
+proc aggregate(name: string) {.inline.} =
+  doAssert stack.head.value.aggregate, name
 
 proc oneQuote(name: string) =
   doAssert stack.head.value.list, name
@@ -280,7 +285,16 @@ proc opPuts(name: auto) {.inline.} =
 
 proc opPeek(name: string) {.inline.} =
   oneParameter(name)
+
+proc opCons(name: auto) =
+  twoParameters(name)
+  aggregate(name)
+  binary(cons, name)
   
+proc opSwons(name: auto) =
+  opSwap(name)
+  opCons(name)
+
 proc opI(name: auto) {.inline.} =
   oneParameter(name)
   oneQuote(name)
@@ -420,6 +434,11 @@ method eval*(x: IdentVal) =
   of SINH: opSinh(SINH)
   of COSH: opCosh(COSH)
   of TANH: opTanh(TANH)
+  of PEEK: opPeek(PEEK)
+  of PUTS: opPuts(PUTS)
+  of POP: discard opPop(POP)
+  of CONS: opCons(CONS)
+  of SWONS: opSwons(SWONS)
   of I: opI(I)
   of X: opX(X)
   of DIP: opDip(DIP)
@@ -431,7 +450,4 @@ method eval*(x: IdentVal) =
   of UNARY2: opUnary2(UNARY2)
   of UNARY3: opUnary3(UNARY3)
   of UNARY4: opUnary4(UNARY4)
-  of PEEK: opPeek(PEEK)
-  of PUTS: opPuts(PUTS)
-  of POP: discard opPop(POP)
   else: discard
