@@ -67,6 +67,8 @@ proc readIdent(s: Scanner): string =
 
 proc readNumber(s: Scanner): string =
   let pos = s.pos
+  if s.ch == '-':
+    s.advance()
   while isDigit(s.ch):
     s.advance()
   if s.ch == '.':
@@ -112,7 +114,7 @@ proc nextToken*(s: Scanner): Token =
     result.kind = tkEOF
     return
   else:
-    if isDigit(s.ch):
+    if isDigit(s.ch) or s.ch == '-':
       result.pos = s.pos
       result.lexeme = s.readNumber()
       result.kind = tkNumber

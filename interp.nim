@@ -50,6 +50,8 @@ const
   SIZE = "size"
   UNCONS = "uncons"
   UNSWONS = "unswons"
+  NULL = "null"
+  SMALL = "small"
   I = "i"
   X = "x" 
   DIP = "dip"
@@ -288,7 +290,9 @@ proc opDiv(name: auto) {.inline.} =
   push(l)
 
 proc opSign(name: auto) {.inline.} = unfloatop(sign, name)
-proc opNeg(name: auto) {.inline.} = unfloatop(sign, name)
+proc opNeg(name: auto) {.inline.} =
+  let x = pop()
+  push(neg(x))
 
 template unordop(op: untyped, name: auto) =
   oneParameter(name)
@@ -386,6 +390,16 @@ proc opUnswons(name: auto) {.inline.} =
   let (first, rest) = popuncons(name)
   push(rest)
   push(first)
+
+proc opNull(name: auto) {.inline.} =
+  oneParameter(name)
+  let x = pop()
+  push(null(x))
+
+proc opSmall(name: auto) {.inline.} =
+  oneParameter(name)
+  let x = pop()
+  push(small(x))
 
 proc opI(name: auto) {.inline.} =
   oneParameter(name)
@@ -540,6 +554,8 @@ method eval*(x: IdentVal) =
   of SIZE: opSize(SIZE)
   of UNCONS: opUncons(UNCONS)
   of UNSWONS: opUnswons(UNSWONS)
+  of NULL: opNull(NULL)
+  of SMALL: opSmall(SMALL)
   of I: opI(I)
   of X: opX(X)
   of DIP: opDip(DIP)

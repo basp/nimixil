@@ -255,13 +255,13 @@ method neg*(a: IntVal): Value {.inline.} =
 method neg*(a: FloatVal): Value {.inline.} =
   newFloat(-a.value)
 
-method ord*(a: Value): Value {.base, inline.} =
+method ord*(a: Value): IntVal {.base, inline.} =
   raiseRuntimeError("TILT ord")
-method ord*(a: CharVal): Value {.inline.} =
+method ord*(a: CharVal): IntVal {.inline.} =
   newInt(ord(a.value))
-method ord*(a: IntVal): Value {.inline.} =
+method ord*(a: IntVal): IntVal {.inline.} =
   newInt(ord(a.value))
-method ord*(a: BoolVal): Value {.inline.} =
+method ord*(a: BoolVal): IntVal {.inline.} =
   newInt(ord(a.value))
 
 method chr*(a: Value): Value {.base, inline.} =
@@ -432,14 +432,43 @@ method at*(a: SetVal, i: IntVal): Value {.inline.} =
 method at*(a: StringVal, i: IntVal): Value {.inline.} =
   newChar(a.value[i.value])
 
-method size*(a: Value): Value {.base, inline.} =
+method size*(a: Value): IntVal {.base, inline.} =
   raiseRuntimeError("TILT size")
-method size*(a: ListVal): Value {.inline.} =
+method size*(a: ListVal): IntVal {.inline.} =
   newInt(toSeq(a.elements.items).len)
-method size*(a: SetVal): Value {.inline.} =
+method size*(a: SetVal): IntVal {.inline.} =
   newInt(toSeq(elements(a.value)).len)
-method size*(a: StringVal): Value {.inline.} =
+method size*(a: StringVal): IntVal {.inline.} =
   newInt(a.value.len)
 
 proc uncons*(a: Value): (Value, Value) {.inline.} =
   (first(a), rest(a))
+
+method zero*(x: Value): bool {.base, inline.} = false
+method zero*(x: IntVal): bool {.inline.} = x.value == 0
+method zero*(x: FloatVal): bool {.inline.} = x.value == 0
+method zero*(x: BoolVal): bool {.inline.} = ord(x.value) == 0
+method zero*(x: CharVal): bool {.inline.} = ord(x.value) == 0
+
+method one*(x: Value): bool {.base, inline.} = false
+method one*(x: IntVal): bool {.inline.} = x.value == 1
+method one*(x: FloatVal): bool {.inline.} = x.value == 1
+method one*(x: BoolVal): bool {.inline.} = ord(x.value) == 1
+method one*(x: CharVal): bool {.inline.} = ord(x.value) == 1
+
+method null*(x: Value): BoolVal {.base, inline.} = newBool(false)
+method null*(x: ListVal): BoolVal {.inline.} = newBool(size(x).value == 0)
+method null*(x: SetVal): BoolVal {.inline.} = newBool(size(x).value == 0)
+method null*(x: StringVal): BoolVal {.inline.} = newBool(size(x).value == 0)
+method null*(x: IntVal): BoolVal {.inline.} = newBool(zero(x))
+method null*(x: FloatVal): BoolVal {.inline.} = newBool(zero(x))
+method null*(x: BoolVal): BoolVal {.inline.} = newBool(zero(x))
+
+method small*(x: Value): BoolVal {.base, inline.} = newBool(false)
+method small*(x: IntVal): BoolVal {.inline.} = newBool(zero(x) or one(x))
+method small*(x: FloatVal): BoolVal {.inline.} = newBool(zero(x) or one(x))
+method small*(x: BoolVal): BoolVal {.inline.} = newBool(zero(x) or one(x))
+method small*(x: CharVal): BoolVal {.inline.} = newBool(zero(x) or one(x))
+method small*(x: StringVal): BoolVal {.inline.} = newBool(size(x).value < 2)
+method small*(x: ListVal): BoolVal {.inline.} = newBool(size(x).value < 2)
+method small*(x: SetVal): BoolVal {.inline.} = newBool(size(x).value < 2)
