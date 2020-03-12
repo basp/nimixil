@@ -6,9 +6,12 @@ type
     help: seq[string]
     fn: proc(name: string)
 
-proc newOp(fn: proc(name: string)): Op = Op(fn: fn)
+proc newOp(fn: proc(name: string)): Op = 
+  Op(fn: fn)
 
-var optable = initTable[string, Op]()
+proc newOp(
+  fn: proc(name: string), 
+  effect: string): Op = Op(fn: fn, effect: effect)
 
 var
   stack* = initSinglyLinkedList[Value]()
@@ -19,6 +22,8 @@ method eval*(x: Value) {.base.}
 template saved1 = saved.head
 template saved2 = saved.head.next
 template saved3 = saved.head.next.next
+template saved4 = saved.head.next.next.next
+template saved5 = saved.head.next.next.next.next
 
 proc execTerm(p: List) =
   for x in p.val:
@@ -28,7 +33,7 @@ proc push(x: Value) {.inline.} =
   let node = newSinglyLinkedNode(x)
   stack.prepend(node)
 
-proc pop(): Value {.inline.} =
+proc pop(): Value =
   result = stack.head.value
   stack.head = stack.head.next
 
@@ -73,14 +78,25 @@ proc twoParameters(name: string) =
   if stack.head.next == nil:
     raiseExecError(msg, name)
 
-# proc threeParameters(name: string) =
-#   const msg = "three parameters"
-#   if stack.head == nil:
-#     raiseExecError(msg, name)
-#   if stack.head.next == nil:
-#     raiseExecError(msg, name)
-#   if stack.head.next.next == nil:
-#     raiseExecError(msg, name)
+proc threeParameters(name: string) =
+  const msg = "three parameters"
+  if stack.head == nil:
+    raiseExecError(msg, name)
+  if stack.head.next == nil:
+    raiseExecError(msg, name)
+  if stack.head.next.next == nil:
+    raiseExecError(msg, name)
+
+proc fourParameters(name: string) =
+  const msg = "four parameters"
+  if stack.head == nil:
+    raiseExecError(msg, name)
+  if stack.head.next == nil:
+    raiseExecError(msg, name)
+  if stack.head.next.next == nil:
+    raiseExecError(msg, name)
+  if stack.head.next.next.next == nil:
+    raiseExecError(msg, name)
 
 proc integerAsSecond(name: string) =
   const msg = "integer as second"
@@ -135,7 +151,9 @@ template biFloatOp(op: untyped, name: string) =
 
 proc opId(name: auto) = discard
 
-proc opPop(name: auto) =
+proc opDup(name: auto) = push(peek().clone)
+
+proc opPop(name: auto)  =
   oneParameter(name)
   discard pop()
 
@@ -204,8 +222,9 @@ proc opTimes(name: auto) =
   for t in 0..<n.val:
     execTerm(p)
 
-optable.add("id", newOp(opId))
-optable.add("dup", newOp(opId))
+var optable = initTable[string, Op]()
+optable.add("id", newOp(opId, "the id function; does nothing"))
+optable.add("dup", newOp(opDup))
 optable.add("pop", newOp(opPop))
 optable.add("+", newOp(opAdd))
 optable.add("-", newOp(opSub))
