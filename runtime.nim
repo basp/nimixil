@@ -1,4 +1,4 @@
-import strutils, strformat, math, lists, sequtils
+import strutils, strformat, math, lists, sequtils, sugar
 
 const SETSIZE = 32
 
@@ -17,7 +17,7 @@ type
   IdentVal* = ref object of Value
     value*: string
   SetVal* = ref object of Value
-    value: int
+    value*: int
   ListVal* = ref object of Value
     elements*: SinglyLinkedList[Value]
   RuntimeError* = object of Exception
@@ -527,8 +527,9 @@ method cmp*(a: StringVal, b: StringVal): IntVal {.inline.} =
 method cmp*(a: ListVal, b: ListVal): IntVal {.inline.} =
   if a.size > b.size:
     return newInt(1)
-  elif a.size < b.size:
+  if a.size < b.size:
     return newInt(-1)
-  else:
-    return newInt(0) # TODO
-      
+  for (x, y) in zip(toSeq(a.elements.items), toSeq(b.elements.items)):
+    let z = cmp(x, y)
+    if not zero(z): return z
+  return newInt(0)

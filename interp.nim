@@ -64,12 +64,28 @@ const
   APP1 = "app1"
   NULLARY = "nullary"
   UNARY = "unary"
-  BINARY = "binary"
-  TERNARY = "ternary"
   UNARY2 = "unary2"
   UNARY3 = "unary3"
   UNARY4 = "unary4"
+  BINARY = "binary"
+  TERNARY = "ternary"
+  CLEAVE = "cleave"
+  BRANCH = "branch"
+  IFTE = "ifte"
+  COND = "cond"
+  WHILE = "while"
+  LINREC = "linrec"
+  TAILREC = "tailrec"
+  STEP = "step"
+  FOLD = "fold"
   MAP = "map"
+  TIMES = "times"
+  INFRA = "infra"
+  PRIMREC = "primrec"
+  FILTER = "filter"
+  SPLIT = "split"
+  SOME = "some"
+  ALL = "all"
 
 var 
   stack* = initSinglyLinkedList[Value]()
@@ -183,6 +199,18 @@ proc listAsSecond(name: string) {.inline.} =
 
 proc oneQuote(name: string) {.inline.} =
   doAssert stack.head.value.list, name
+
+proc twoQuotes(name: string) {.inline.} =
+  oneQuote(name)
+  doAssert stack.head.next.value.list, name
+
+proc threeQuotes(name: string) {.inline.} =
+  twoQuotes(name)
+  doAssert stack.head.next.next.value.list, name
+
+proc fourQuotes(name: string) {.inline.} =
+  threeQuotes(name)
+  doAssert stack.head.next.next.next.value.list, name
 
 template unary(op: untyped, name: string) =
   let x = pop()
@@ -530,6 +558,20 @@ proc opUnary4(name: auto) =
   push(pz)
   push(pw)
 
+proc opIfte(name: auto) =
+  threeParameters(name)
+  let f = popt[ListVal]()
+  let t = popt[ListVal]()
+  let b = popt[ListVal]()
+  saved = stack
+  execterm(b)
+  let p = peek()
+  stack = saved
+  if(isThruthy(p)):
+    execterm(t)
+  else:
+    execterm(f)    
+
 proc opMap(name: auto) =
   twoParameters(name)
   oneQuote(name)
@@ -545,6 +587,65 @@ proc opMap(name: auto) =
     stack = saved
   stack.head = saved3
   push(b)
+
+proc opTimes(name: auto) =
+  twoParameters(name)
+  oneQuote(name)
+  integerAsSecond(name)
+  let p = popt[ListVal]()
+  let n = popt[IntVal]()
+  for i in 0..<n.value:
+    execterm(p)
+
+proc filterList() =
+  var a1 = newList(@[])
+  let p = popt[ListVal]()
+  let a = popt[ListVal]()
+  saved = stack
+  for x in a.elements:
+    push(x)
+    execterm(p)
+    if isThruthy(peek()):
+      a1.elements.append(x)
+    stack = saved
+  push(a1)
+
+proc filterSet() =
+  var a1 = 0
+  let p = popt[ListVal]()
+  let a = popt[SetVal]()
+  saved = stack
+  for x in items(a.value):
+    push(newInt(x))
+    execterm(p)
+    if isThruthy(peek()):
+      a1 = add(a1, x)
+    stack = saved
+  push(newSet(a1))
+
+proc filterString() =
+  var a1 = ""
+  let p = popt[ListVal]()
+  let a = popt[StringVal]()
+  saved = stack
+  for x in a.value:
+    push(newChar(x))
+    execterm(p)
+    if isThruthy(peek()):
+      a1 &= x
+    stack = saved
+  push(newString(a1))
+
+proc opFilter(name: auto) =
+  twoParameters(name)
+  oneQuote(name)
+  aggregateAsSecond(name)
+  if stack.head.next.value of ListVal:
+    filterList()
+  elif stack.head.next.value of SetVal:
+    filterSet()
+  elif stack.head.next.value of StringVal:
+    filterString()
 
 method eval*(x: Value) {.base.} =
   push(x)
@@ -619,7 +720,10 @@ method eval*(x: IdentVal) =
   of UNARY2: opUnary2(UNARY2)
   of UNARY3: opUnary3(UNARY3)
   of UNARY4: opUnary4(UNARY4)
+  of IFTE: opIfte(IFTE)
   of MAP: opMap(MAP)
+  of TIMES: opTimes(TIMES)
+  of FILTER: opFilter(FILTER)
   else:
     let msg = "undefined symbol `" & $x & "`"
     raiseRuntimeError(msg)
