@@ -1,155 +1,149 @@
-import strutils, strformat, math, lists, sequtils
+import lists, sequtils, math, strformat, strutils
 
-const SETSIZE = 32
+const MaxSetSize = 32
 
 type
   Value* = ref object of RootObj
-  IntVal* = ref object of Value
-    value*: int
-  BoolVal* = ref object of Value
-    value*: bool
-  CharVal* = ref object of Value
-    value*: char
-  FloatVal* = ref object of Value
-    value*: float
-  StringVal* = ref object of Value
-    value*: string
-  IdentVal* = ref object of Value
-    value*: string
-  SetVal* = ref object of Value
-    value*: int
-  ListVal* = ref object of Value
-    elements*: SinglyLinkedList[Value]
-  RuntimeError* = object of Exception
+  Bool* = ref object of Value
+    val*: bool
+  Char* = ref object of Value
+    val*: char
+  Int* = ref object of Value
+    val*: int
+  Float* = ref object of Value
+    val*: float
+  String* = ref object of Value
+    val*: string
+  Set* = ref object of Value
+    val*: int
+  List* = ref object of Value
+    val*: SinglyLinkedList[Value]
+  Ident* = ref object of Value
+    val*: string
+  Usr* = ref object
+    id*: string
+    term*: seq[Value]
+  RuntimeException* = object of Exception
 
 proc raiseRuntimeError*(msg: string) =
-  raise newException(RuntimeError, msg)
+  raise newException(RuntimeException, msg)
 
-method isThruthy*(x: Value): bool {.base, inline.} = false
-method isThruthy*(x: IntVal): bool {.inline.} = x.value != 0
-method isThruthy*(x: FloatVal): bool {.inline.} = x.value != 0
-method isThruthy*(x: StringVal): bool {.inline.} = len(x.value) > 0
-method isThruthy*(x: BoolVal): bool {.inline.} = x.value
-method isThruthy*(x: ListVal): bool {.inline.} = x.elements.head != nil
-method isThruthy*(x: SetVal): bool {.inline.} = x.value > 0
-method isThruthy*(x: CharVal): bool {.inline.} = ord(x.value) > 0
+proc newBool*(val: bool): Bool =
+  Bool(val: val)
 
-proc add*(s: int, x: range[0..SETSIZE-1]): int =
-  s or (1 shl x)
+proc newChar*(val: char): Char =
+  Char(val: val)
 
-proc remove*(s: int, x: range[0..SETSIZE-1]): int =
-  s and not (1 shl x)
+proc newInt*(val: int): Int =
+  Int(val: val)
 
-proc contains*(s: int, x: range[0..SETSIZE-1]): bool =
-  (s and (1 shl x)) > 0
+proc newFloat*(val: float): Float =
+  Float(val: val)
 
-iterator items*(s: int): int =
-  for i in 0..<SETSIZE:
-    if s.contains(i):
-      yield i
+proc newString*(val: string): String =
+  String(val: val)
 
-proc newBool*(x: bool): BoolVal {.inline.} =
-  BoolVal(value: x)
+proc newSet*(val: int): Set =
+  Set(val: val)
 
-proc newInt*(x: int): IntVal {.inline.} =
-  IntVal(value: x)
+proc newList*(): List =
+  List(val: initSinglyLinkedList[Value]())
 
-proc newFloat*(x: float): Value {.inline.} =
-  FloatVal(value: x)
+proc newList*(xs: seq[Value]): List =
+  result = newList()
+  for x in xs: result.val.append(x)
 
-proc newChar*(x: char): Value {.inline.} =
-  CharVal(value: x)
+proc newList*(xs: SomeLinkedList[Value]): List =
+  List(val: xs)
 
-proc newString*(x: string): Value {.inline.} =
-  StringVal(value: x)
+proc newIdent*(val: string): Ident =
+  Ident(val: val)
 
-proc newIdent*(x: string): Value {.inline.} =
-  IdentVal(value: x)
+method clone*(self: Value): Value {.base.} = self
 
-proc newSet*(x: int): Value {.inline.} =
-  SetVal(value: x)
+template literalClone*(t: untyped, ctor: untyped) =
+  method clone*(x: t): Value =
+    ctor(x.val)
 
-proc newList*(xs: seq[Value]): ListVal {.inline.} =
-  var list = initSinglyLinkedList[Value]()
-  for x in xs: list.append(x)
-  ListVal(elements: list)
+literalClone(Bool, newBool)
+literalClone(Char, newChar)
+literalClone(Int, newInt)
+literalClone(Float, newFloat)
+literalClone(String, newString)
+literalClone(Set, newSet)
+literalClone(List, newList) # TODO: check this for deep clone
+literalClone(Ident, newIdent)
 
-proc newList*(xs: SomeLinkedList[Value]): Value {.inline.} =
-  ListVal(elements: xs)
+method `==`*(a, b: Value): bool {.base.} = false
 
-proc newValue*(v: int): IntVal {.inline.} =
-  IntVal(value: v)
+template literalEq(t: untyped) =
+  method `==`*(a, b: t): bool = a.val == b.val
 
-proc newValue*(v: float): FloatVal {.inline.} =
-  FloatVal(value: v)
+literalEq(Bool)
+literalEq(Char)
+literalEq(Int)
+literalEq(Float)
+literalEq(String)
+literalEq(Set)
+literalEq(Ident)
 
-proc newValue*(v: string): StringVal {.inline.} =
-  StringVal(value: v)
+proc add*(a: Set, x: int) =
+  a.val = a.val or (1 shl x)
 
-proc newValue*(v: bool): BoolVal {.inline.} =
-  BoolVal(value: v)
+proc add*(a: Set, x: Int) =
+  a.add(x.val)
 
-method clone*(self: Value): Value {.base, inline.} =
-  self
-method clone*(self: IntVal): Value {.inline.} =
-  newInt(self.value)
-method clone*(self: BoolVal): Value {.inline.} =
-  newBool(self.value)
-method clone*(self: CharVal): Value {.inline.} =
-  newChar(self.value)
-method clone*(self: FloatVal): Value {.inline.} =
-  newFloat(self.value)
-method clone*(self: StringVal): Value {.inline.} =
-  newString(self.value)
-method clone*(self: IdentVal): Value {.inline.} =
-  newIdent(self.value)
-method clone*(self: SetVal): Value {.inline.} =
-  newSet(self.value)
+proc add*(a: List, x: Value) =
+  a.val.append(x)
 
-method `$`*(self: Value): string {.base, inline.} =
-  repr(self)
-method `$`*(self: IntVal): string {.inline.} =
-  $self.value
-method `$`*(self: CharVal): string {.inline.} =
-  repr(self.value)
-method `$`*(self: BoolVal): string {.inline.} =
-  $self.value
-method `$`*(self: FloatVal): string {.inline.} =
-  $self.value
-method `$`*(self: StringVal): string {.inline.} =
-  escape(self.value)
-method `$`*(self: IdentVal): string {.inline.} =
-  self.value
-method `$`*(self: ListVal): string {.inline.} =
-  $self.elements
-method `$`*(self: SetVal): string {.inline.} =
-  var xs = toSeq(items(self.value))
-  "{" & strutils.join(xs, " ") & "}"
+proc delete*(a: Set, x: int) =
+  a.val = a.val and not (1 shl x)
 
-proc badarg(name: string, x: Value) =
-  let msg = fmt"badarg: {name} does not support argument {x}"
-  raiseRuntimeError(msg)
+proc contains*(a: Set, x: int): bool =
+  (a.val and (1 shl x)) > 0
 
-method `==`*(a: Value, b: Value): bool {.base, inline.} = false
-method `==`*(a: IntVal, b: IntVal): bool {.inline.} =
-  a.value == b.value
-method `==`*(a: IntVal, b: FloatVal): bool {.inline.} =
-  a.value.float == b.value
-method `==`*(a: FloatVal, b: IntVal): bool {.inline.} =
-  a.value == b.value.float
-method `==`*(a: FloatVal, b: FloatVal): bool {.inline.} =
-  a.value == b.value
-method `==`*(a: BoolVal, b: BoolVal): bool {.inline.} =
-  a.value == b.value
-method `==`*(a: CharVal, b: CharVal): bool {.inline.} =
-  a.value == b.value
-method `==`*(a: StringVal, b: StringVal): bool {.inline.} =
-  a.value == b.value
-method `==`*(a: SetVal, b: SetVal): bool {.inline.} =
-  a.value == b.value
-method `==`*(a: ListVal, b: ListVal): bool {.inline.} =
-  var x = a.elements.head
-  var y = b.elements.head
+proc contains*(a: Set, x: Int): bool =
+  a.contains(x.val)
+
+proc contains*(a: List, x: Value): bool =
+  a.val.contains(x)
+
+iterator items*(a: String): char =
+  for c in a.val:
+    yield c
+
+iterator items*(a: Set): int =
+  for x in 0..<MaxSetSize:
+    if a.contains(x):
+      yield x
+
+iterator items*(a: List): Value =
+  var node = a.val.head
+  while node != nil:
+    yield node.value
+    node = node.next
+
+proc `[]`*(a: String, i: int): char = a[i]
+proc `[]`*(a: Set, i: int): int = toSeq(a.items)[i]
+proc `[]`*(a: List, i: int): Value = toSeq(a.items)[i]
+
+method `$`*(a: Value): string {.base} = repr(a)
+
+template literalStr(t: untyped) =
+  method `$`*(a: t): string = $a.val
+
+literalStr(Bool)
+literalStr(Int)
+literalStr(Float)
+literalStr(List)
+
+method `$`*(a: Char): string = repr(a.val)
+method `$`*(a: String): string = escape(a.val)
+method `$`*(a: Set): string = "{" & join(toSeq(items(a)), " ") & "}"
+
+method `==`*(a, b: List): bool =
+  var x = a.val.head
+  var y = b.val.head
   while x != nil and y != nil:
     if x.value != y.value:
       return false
@@ -157,379 +151,87 @@ method `==`*(a: ListVal, b: ListVal): bool {.inline.} =
     y = y.next
   true
 
-proc `!=`*(a: Value, b: Value): bool = not (a == b)
+template unFloatOp(name: string, op: untyped, fn: untyped) =
+  method op*(a: Value): Value {.base.} =
+    raiseRuntimeError("badarg for `" & name & "`")
+  method op*(a: Int): Value  =
+    newFloat(fn(a.val.float))
+  method op*(a: Float): Value =
+    newFloat(fn(a.val))
 
-method `or`*(a: Value, b: Value): Value {.base, inline.} =
-  raiseRuntimeError("TILT or")
-method `or`*(a: BoolVal, b: BoolVal): Value {.inline.} =
-  newBool(a.value or b.value)
-method `or`*(a: SetVal, b: SetVal): Value {.inline.} =
-  newSet(a.value or b.value)
+template biFloatOp(name: string, op: untyped, fn: untyped, ctor: untyped) =
+  method op*(a: Value, b: Value): Value {.base.} =
+    raiseRuntimeError("badargs for `" & name & "`")
+  method op*(a: Int, b: Int): Value =
+    ctor(fn(a.val, b.val))
+  method op*(a: Int, b: Float): Value  =
+    newFloat(fn(a.val.float, b.val))
+  method op*(a: Float, b: Int): Value =
+    newFloat(fn(a.val, b.val.float))
+  method op*(a: Float, b: Float): Value =
+    newFloat(fn(a.val, b.val))
 
-method `xor`*(a: Value, b: Value): Value {.base, inline.} =
-  raiseRuntimeError("TILT or")
-method `xor`*(a: BoolVal, b: BoolVal): Value {.inline.} =
-  newBool(a.value xor b.value)
-method `xor`*(a: SetVal, b: SetVal): Value {.inline.} =
-  newSet(a.value xor b.value)
+template biLogicOp(name: string, op: untyped) =
+  method op*(a: Value, b: Value): Value {.base.} =
+    raiseRuntimeError("badargs for `" & name & "`")
+  method op*(a: Bool, b: Bool): Value =
+    newBool(op(a.val, b.val))
+  method op*(a: Set, b: Set): Value =
+    newSet(op(a.val, b.val))
 
-method `and`*(a: Value, b: Value): Value {.base, inline.} =
-  raiseRuntimeError("TILT and")
-method `and`*(a: BoolVal, b: BoolVal): Value {.inline.} =
-  newBool(a.value and b.value)
-method `and`*(a: SetVal, b: SetVal): Value {.inline.} =
-  newSet(a.value and b.value)
+unFloatOp("acos", acos, arcsin)
+unFloatOp("asin", asin, arcsin)
+unFloatOp("atan", atan, arctan)
+unFloatOp("cos", cos, cos)
+unFloatOp("sin", sin, sin)
+unFloatOp("tan", tan, tan)
+unFloatOp("cosh", cosh, cosh)
+unFloatOp("sinh", sinh, sinh)
+unFloatOp("tanh", tanh, tanh)
+unFloatOp("exp", exp, exp)
+unFloatOp("sqrt", sqrt, sqrt)
 
-method `not`*(a: Value): Value {.base, inline.} =
-  badarg("not", a)
-method `not`*(a: BoolVal): Value {.inline.} =
-  newBool(not a.value)
-method `not`*(a: Setval): Value {.inline.} =
-  newSet(not a.value)
+biFloatOp("+", `+`, `+`): newInt
+biFloatOp("-", `-`, `-`): newInt
+biFloatOp("*", `*`, `*`): newInt
+biFloatOp("/", `/`, `/`): newFloat
+biFloatOp("rem", `rem`, `mod`): newInt
 
-method `+`*(a: Value, b: Value): Value {.base, inline.} =
-  raiseRuntimeError("TILT +")
-method `+`*(a: IntVal, b: IntVal): Value {.inline.} =
-  newInt(a.value + b.value)
-method `+`*(a: IntVal, b: FloatVal): Value {.inline.} =
-  newFloat(a.value.float + b.value)
-method `+`*(a: FloatVal, b: IntVal): Value {.inline.} =
-  newFloat(a.value + b.value.float)
-method `+`*(a: FloatVal, b: FloatVal): Value {.inline.} =
-  newFloat(a.value + b.value)
+biLogicOp("and", `and`)
+biLogicOp("or", `or`)
+biLogicOp("xor", `xor`)
 
-method `-`*(a: Value, b: Value): Value {.base, inline.} =
-  raiseRuntimeError("TILT -")
-method `-`*(a: IntVal, b: IntVal): Value {.inline.} =
-  newInt(a.value - b.value)
-method `-`*(a: IntVal, b: FloatVal): Value {.inline.} =
-  newFloat(a.value.float - b.value)
-method `-`*(a: FloatVal, b: IntVal): Value {.inline.} =
-  newFloat(a.value - b.value.float)
-method `-`*(a: FloatVal, b: FloatVal): Value {.inline.} =
-  newFloat(a.value - b.value)
+method cons*(x: Value, a: Value): Value {.base.} =
+  raiseRuntimeError("badargs for `cons`")
+method cons*(x: Value, a: List): Value =
+  var b = newList(a.val)
+  b.val.prepend(x)
+  return b
+method cons*(x: Char, a: String): Value =
+  var b = newString(a.val)
+  b.val.insert($x.val)
+  return b
+method cons*(x: Int, a: Set): Value =
+  var b = newSet(a.val)
+  b.add(x)
+  return b
 
-method `*`*(a: Value, b: Value): Value {.base.} =
-  raiseRuntimeError("TILT *")
-method `*`*(a: IntVal, b: IntVal): Value {.inline.} =
-  newInt(a.value * b.value)
-method `*`*(a: IntVal, b: FloatVal): Value {.inline.} =
-  newFloat(a.value.float * b.value)
-method `*`*(a: FloatVal, b: IntVal): Value {.inline.} =
-  newFloat(a.value * b.value.float)
-method `*`*(a: FloatVal, b: FloatVal): Value {.inline.} =
-  newFloat(a.value * b.value)
+method first*(a: Value): Value {.base.} = 
+  raiseRuntimeError("badarg for `first`")
+method first*(a: String): Value = 
+  newChar(a[0])
+method first*(a: Set): Value =
+  newInt(toSeq(items(a))[0])
+method first*(a: List): Value =
+  toSeq(items(a))[0]
 
-method `/`*(a: Value, b: Value): Value {.base, inline.} =
-  raiseRuntimeError("TILT /")
-method `/`*(a: IntVal, b: IntVal): Value {.inline.} =
-  newFloat(a.value / b.value)
-method `/`*(a: IntVal, b: FloatVal): Value {.inline.} =
-  newFloat(a.value.float / b.value)
-method `/`*(a: FloatVal, b: IntVal): Value {.inline.} =
-  newFloat(a.value / b.value.float)
-method `/`*(a: FloatVal, b: FloatVal): Value {.inline.} =
-  newFloat(a.value / b.value)
-
-method `mod`*(a: Value, b: Value): Value {.base, inline.} =
-  raiseRuntimeError("TILT mod")
-method `mod`*(a: IntVal, b: IntVal): Value {.inline.} =
-  newInt(a.value mod b.value)
-method `mod`*(a: IntVal, b: FloatVal): Value {.inline.} =
-  newFloat(a.value.float mod b.value)
-method `mod`*(a: FloatVal, b: IntVal): Value {.inline.} =
-  newFloat(a.value mod b.value.float)
-method `mod`*(a: FloatVal, b: FloatVal): Value {.inline.} =
-  newFloat(a.value mod b.value)
-
-method `div`*(a: Value, b: Value): (Value, Value) {.base, inline.} =
-  raiseRuntimeError("TILT div")
-method `div`*(a: IntVal, b: IntVal): (Value, Value) {.inline.} =
-  let q = a.value div b.value
-  let rem = a.value mod b.value
-  (newInt(q), newInt(rem))
-
-method sign*(a: Value): Value {.base, inline.} =
-  raiseRuntimeError("TILT sign")
-method sign*(a: IntVal): Value {.inline.} =
-  newInt(sgn[int](a.value))
-method sign*(a: FloatVal): Value {.inline.} =
-  newfloat(sgn[float](a.value).float)
-
-method neg*(a: Value): Value {.base, inline.} =
-  raiseRuntimeError("TILT neg")
-method neg*(a: IntVal): Value {.inline.} =
-  newInt(-a.value)
-method neg*(a: FloatVal): Value {.inline.} =
-  newFloat(-a.value)
-
-method ord*(a: Value): IntVal {.base, inline.} =
-  raiseRuntimeError("TILT ord")
-method ord*(a: CharVal): IntVal {.inline.} =
-  newInt(ord(a.value))
-method ord*(a: IntVal): IntVal {.inline.} =
-  newInt(ord(a.value))
-method ord*(a: BoolVal): IntVal {.inline.} =
-  newInt(ord(a.value))
-
-method chr*(a: Value): Value {.base, inline.} =
-  raiseRuntimeError("TILT chr")
-method chr*(a: CharVal): Value {.inline.} =
-  newChar(chr(ord(a.value)))
-method chr*(a: IntVal): Value {.inline.} =
-  newChar(chr(a.value))
-method chr*(a: BoolVal): Value {.inline.} =
-  newChar(chr(ord(a.value)))
-
-method abs*(a: Value): Value {.base, inline.} =
-  raiseRuntimeError("TILT abs")
-method abs*(a: IntVal): Value {.inline.} =
-  newInt(abs(a.value))
-method abs*(a: FloatVal): Value {.inline.} =
-  newFloat(abs(a.value))
-
-method acos*(a: Value): Value {.base, inline.} =
-  raiseRuntimeError("TILT acos")
-method acos*(a: IntVal): Value {.inline.} =
-  newFloat(arccos(a.value.float))
-method acos*(a: FloatVal): Value {.inline.} =
-  newFloat(arccos(a.value.float))
-
-method asin*(a: Value): Value {.base, inline.} =
-  raiseRuntimeError("TILT asin")
-method asin*(a: IntVal): Value {.inline.} =
-  newFloat(arcsin(a.value.float))
-method asin*(a: FloatVal): Value {.inline.} =
-  newFloat(arcsin(a.value.float))
-
-method atan*(a: Value): Value {.base, inline.} =
-  raiseRuntimeError("TILT atan")
-method atan*(a: IntVal): Value {.inline.} =
-  newFloat(arctan(a.value.float))
-method atan*(a: FloatVal): Value {.inline.} =
-  newFloat(arctan(a.value.float))
-
-method atan2*(a: Value, b: Value): Value {.base, inline.} =
-  raiseRuntimeError("TILT atan2")
-
-method ceil*(a: Value): Value {.base, inline.} =
-  raiseRuntimeError("TILT ceil")
-
-method cos*(a: Value): Value {.base, inline.} =
-  raiseRuntimeError("TILT cos")
-method cos*(a: IntVal): Value {.inline.} =
-  newFloat(cos(a.value.float))
-method cos*(a: FloatVal): Value {.inline.} =
-  newFloat(cos(a.value))
-
-method cosh*(a: Value): Value {.base, inline.} =
-  raiseRuntimeError("TILT cosh")
-
-method exp*(a: Value): Value {.base, inline.} =
-  raiseRuntimeError("TILT exp")
-
-method floor*(a: Value): Value {.base, inline.} =
-  raiseRuntimeError("TILT floor")
-
-method sin*(a: Value): Value {.base, inline.} =
-  raiseRuntimeError("TILT sin")
-method sin*(a: IntVal): Value {.inline.} =
-  newFloat(sin(a.value.float))
-method sin*(a: FloatVal): Value {.inline.} =
-  newFloat(sin(a.value))
-
-method sinh*(a: Value): Value {.base.} =
-  raiseRuntimeError("TILT sinh")
-
-method sqrt*(a: Value): Value {.base, inline.} =
-  raiseRuntimeError("TILT sqrt")
-method sqrt*(a: IntVal): Value {.inline.} =
-  newFloat(sqrt(a.value.float))
-method sqrt*(a: FloatVal): Value {.inline.} =
-  newFloat(sqrt(a.value))
-
-method tan*(a: Value): Value {.base.} =
-  raiseRuntimeError("TILT tan")
-method tan*(a: IntVal): Value {.inline.} =
-  newFloat(tan(a.value.float))
-method tan*(a: FloatVal): Value {.inline.} =
-  newFloat(tan(a.value))
-
-method tanh*(a: Value): Value {.base.} =
-  raiseRuntimeError("TILT tanh")
-
-method pred*(a: Value): Value {.base, inline.} =
-  raiseRuntimeError("TILT pred")
-method pred*(a: BoolVal): Value {.inline.} =
-  newBool(pred(a.value))
-method pred*(a: CharVal): Value {.inline.} =
-  newChar(pred(a.value))
-method pred*(a: IntVal): Value {.inline.} =
-  newInt(pred(a.value))
-
-method succ*(a: Value): Value {.base, inline.} =
-  raiseRuntimeError("TILT succ")
-method succ*(a: BoolVal): Value {.inline.} =
-  newBool(succ(a.value))
-method succ*(a: CharVal): Value {.inline.} =
-  newChar(succ(a.value))
-method succ*(a: IntVal): Value {.inline.} =
-  newInt(succ(a.value))
-
-method max*(a: Value, b: Value): Value {.base, inline.} =
-  raiseRuntimeError("TILT max")
-method max*(a: IntVal, b: IntVal): Value {.inline.} =
-  newInt(max(a.value, b.value))
-method max*(a: FloatVal, b: IntVal): Value {.inline.} =
-  newFloat(max(a.value, b.value.float))
-method max*(a: IntVal, b: FloatVal): Value {.inline.} =
-  newFloat(max(a.value.float, b.value))
-method max*(a: FloatVal, b: FloatVal): Value {.inline.} =
-  newFloat(max(a.value, b.value))
-
-method min*(a: Value, b: Value): Value {.base, inline.} =
-  raiseRuntimeError("TILT min")
-method min*(a: IntVal, b: IntVal): Value {.inline.} =
-  newInt(min(a.value, b.value))
-method min*(a: FloatVal, b: IntVal): Value {.inline.} =
-  newFloat(min(a.value, b.value.float))
-method min*(a: IntVal, b: FloatVal): Value {.inline.} =
-  newFloat(min(a.value.float, b.value))
-method min*(a: FloatVal, b: FloatVal): Value {.inline.} =
-  newFloat(min(a.value, b.value))
-
-method cons*(x: Value, a: Value): Value {.base, inline.} =
-  raiseRuntimeError("TILT cons")
-method cons*(x: Value, a: ListVal): Value {.inline.} =
-  var xs = a.elements
-  xs.append(x)
-  newList(xs)
-method cons*(x: CharVal, a: StringVal): Value {.inline.} =
-  var str = a.value
-  str.insert($x.value)
-  newString(str)
-method cons*(x: IntVal, a: SetVal): Value {.inline.} =
-  let s = add(a.value, x.value)
-  newSet(s)
-
-method first*(a: Value): Value {.base, inline.} =
-  raiseRuntimeError("TILT first")
-method first*(a: ListVal): Value {.inline.} =
-  a.elements.head.value.clone
-method first*(a: SetVal): Value {.inline.} =
-  newInt(toSeq(items(a.value))[0])
-method first*(a: StringVal): Value {.inline.} =
-  newChar(a.value[0])
-
-method rest*(a: Value): Value {.base, inline.} =
-  raiseRuntimeError("TILT rest")
-method rest*(a: ListVal): Value {.inline.} =
+method rest*(a: Value): Value {.base.} =
+  raiseRuntimeError("badarg for `rest`")
+method rest*(a: List): Value =
   var list = initSinglyLinkedList[Value]()
-  list.head = a.elements.head.next
+  list.head = a.val.head.next
   newList(list)
-method rest*(a: SetVal): Value {.inline.} =
-  let first = toSeq(items(a.value))[0]
-  newSet(remove(a.value, first))
-
-method at*(a: Value, i: IntVal): Value {.base, inline.} =
-  raiseRuntimeError("TILT cons")
-method at*(a: ListVal, i: IntVal): Value {.inline.} =
-  toSeq(a.elements.items)[i.value]
-method at*(a: SetVal, i: IntVal): Value {.inline.} =
-  newInt(toSeq(items(a.value))[i.value])
-method at*(a: StringVal, i: IntVal): Value {.inline.} =
-  newChar(a.value[i.value])
-
-method size*(a: Value): IntVal {.base, inline.} =
-  raiseRuntimeError("TILT size")
-method size*(a: ListVal): IntVal {.inline.} =
-  newInt(toSeq(a.elements.items).len)
-method size*(a: SetVal): IntVal {.inline.} =
-  newInt(toSeq(items(a.value)).len)
-method size*(a: StringVal): IntVal {.inline.} =
-  newInt(a.value.len)
-
-proc uncons*(a: Value): (Value, Value) {.inline.} =
-  (first(a), rest(a))
-
-method zero*(x: Value): bool {.base, inline.} = false
-method zero*(x: IntVal): bool {.inline.} = x.value == 0
-method zero*(x: FloatVal): bool {.inline.} = x.value == 0
-method zero*(x: BoolVal): bool {.inline.} = ord(x.value) == 0
-method zero*(x: CharVal): bool {.inline.} = ord(x.value) == 0
-
-method one*(x: Value): bool {.base, inline.} = false
-method one*(x: IntVal): bool {.inline.} = x.value == 1
-method one*(x: FloatVal): bool {.inline.} = x.value == 1
-method one*(x: BoolVal): bool {.inline.} = ord(x.value) == 1
-method one*(x: CharVal): bool {.inline.} = ord(x.value) == 1
-
-method null*(x: Value): BoolVal {.base, inline.} =
-  newBool(false)
-method null*(x: ListVal): BoolVal {.inline.} =
-  newBool(size(x).value == 0)
-method null*(x: SetVal): BoolVal {.inline.} =
-  newBool(size(x).value == 0)
-method null*(x: StringVal): BoolVal {.inline.} =
-  newBool(size(x).value == 0)
-method null*(x: IntVal): BoolVal {.inline.} =
-  newBool(zero(x))
-method null*(x: FloatVal): BoolVal {.inline.} =
-  newBool(zero(x))
-method null*(x: BoolVal): BoolVal {.inline.} =
-  newBool(zero(x))
-
-method small*(x: Value): BoolVal {.base, inline.} =
-  newBool(false)
-method small*(x: IntVal): BoolVal {.inline.} =
-  newBool(zero(x) or one(x))
-method small*(x: FloatVal): BoolVal {.inline.} =
-  newBool(zero(x) or one(x))
-method small*(x: BoolVal): BoolVal {.inline.} =
-  newBool(zero(x) or one(x))
-method small*(x: CharVal): BoolVal {.inline.} =
-  newBool(zero(x) or one(x))
-method small*(x: StringVal): BoolVal {.inline.} =
-  newBool(size(x).value < 2)
-method small*(x: ListVal): BoolVal {.inline.} =
-  newBool(size(x).value < 2)
-method small*(x: SetVal): BoolVal {.inline.} =
-  newBool(size(x).value < 2)
-
-method cmp*(a: Value, b: Value): IntVal {.base, inline.} =
-  raiseRuntimeError("TILT cmp")
-method cmp*(a: IntVal, b: IntVal): IntVal {.inline.} =
-  newInt(cmp(a.value, b.value))
-method cmp*(a: IntVal, b: FloatVal): IntVal {.inline.} =
-  newInt(cmp(a.value.float, b.value))
-method cmp*(a: FloatVal, b: IntVal): IntVal {.inline.} =
-  newInt(cmp(a.value, b.value.float))
-method cmp*(a: BoolVal, b: BoolVal): IntVal {.inline.} =
-  newInt(cmp(a.value, b.value))
-method cmp*(a: BoolVal, b: IntVal): IntVal {.inline.} =
-  newInt(cmp(ord(a.value), b.value))
-method cmp*(a: IntVal, b: BoolVal): IntVal {.inline.} =
-  newInt(cmp(a.value, ord(b.value)))
-method cmp*(a: BoolVal, b: CharVal): IntVal {.inline.} =
-  newInt(cmp(ord(a.value), ord(b.value)))
-method cmp*(a: CharVal, b: BoolVal): IntVal {.inline.} =
-  newInt(cmp(ord(a.value), ord(b.value)))
-method cmp*(a: CharVal, b: CharVal): IntVal {.inline.} =
-  newInt(cmp(a.value, b.value))
-method cmp*(a: CharVal, b: IntVal): IntVal {.inline.} =
-  newInt(cmp(ord(a.value), b.value))
-method cmp*(a: IntVal, b: CharVal): IntVal {.inline.} =
-  newInt(cmp(a.value, ord(b.value)))
-method cmp*(a: SetVal, b: SetVal): IntVal {.inline.} =
-  newInt(cmp(a.value, b.value))
-method cmp*(a: StringVal, b: StringVal): IntVal {.inline.} =
-  newInt(cmp(a.value, b.value))
-method cmp*(a: ListVal, b: ListVal): IntVal {.inline.} =
-  if a.size > b.size:
-    return newInt(1)
-  if a.size < b.size:
-    return newInt(-1)
-  for (x, y) in zip(toSeq(a.elements.items), toSeq(b.elements.items)):
-    let z = cmp(x, y)
-    if not zero(z): return z
-  return newInt(0)
+method rest*(a: Set): Value =
+  let first = toSeq(items(a))[0]
+  a.delete(first)
+  return a

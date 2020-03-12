@@ -1,4 +1,4 @@
-import lists, scan, parse, interp2, runtime2
+import lists, scan, parse, interp, runtime
 
 while true:
   stdout.write("< ")
