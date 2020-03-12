@@ -59,6 +59,21 @@ proc newList*(xs: SomeLinkedList[Value]): List =
 proc newIdent*(val: string): Ident =
   Ident(val: val)
 
+method clone*(self: Value): Value {.base.} = self
+
+template literalClone*(t: untyped, ctor: untyped) =
+  method clone*(x: t): Value =
+    ctor(x.val)
+
+literalClone(Bool, newBool)
+literalClone(Char, newChar)
+literalClone(Int, newInt)
+literalClone(Float, newFloat)
+literalClone(String, newString)
+literalClone(Set, newSet)
+literalClone(List, newList) # TODO: check this for deep clone
+literalClone(Ident, newIdent)
+
 method `==`*(a, b: Value): bool {.base.} = false
 
 template literalEq(t: untyped) =
@@ -178,7 +193,7 @@ unFloatOp("sqrt", sqrt, sqrt)
 
 biFloatOp("+", `+`, `+`): newInt
 biFloatOp("-", `-`, `-`): newInt
-biFloatOp("*", `*`, `+`): newInt
+biFloatOp("*", `*`, `*`): newInt
 biFloatOp("/", `/`, `/`): newFloat
 biFloatOp("rem", `rem`, `mod`): newInt
 
