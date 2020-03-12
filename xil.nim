@@ -1,15 +1,18 @@
-import lists, scan, parse, interp, runtime
+import lists, tables, scan, parse, interp, runtime
 
 while true:
   stdout.write("< ")
   let src = stdin.readLine()
-  let scanner = newScanner(src);
+  var scanner = newScanner(src);
   let parser = newParser(scanner)
   try:
-    let term = parser.parseTerm()
-    for x in term:
-      eval(x)
-    echo "."
+    var (ok, def) = parser.tryParseDef()
+    if ok:
+      deftable.add(def.id.val, def)
+      continue
+    else:
+      let term = parser.parseTerm()
+      for x in term: eval(x)
   except RuntimeException:
     let msg = getCurrentExceptionMsg()
     echo "Runtime error: ", msg

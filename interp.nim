@@ -197,6 +197,18 @@ proc opSwap(name: auto) =
   push(y)
   push(x)
 
+proc opI(name: auto) =
+  oneParameter(name)
+  quoteOnTop(name)
+  let p = cast[List](pop())
+  execTerm(p)
+
+proc opX(name: auto) =
+  oneParameter(name)
+  quoteOnTop(name)
+  let p = cast[List](peek())
+  execTerm(p)
+
 proc opMap(name: auto) =
   twoParameters(name)
   quoteOnTop(name)
@@ -246,6 +258,10 @@ optable.add("cons", newOp(opCons))
 optable.add("swap", newOp(opSwap))
 optable.add("map", newOp(opMap))
 optable.add("times", newOp(opTimes))
+optable.add("i", newOp(opI))
+optable.add("x", newOp(opX))
+
+var deftable* = initTable[string, Usr]()
 
 method eval*(x: Value) {.base.} = push(x)
 

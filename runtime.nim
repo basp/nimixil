@@ -20,8 +20,8 @@ type
     val*: SinglyLinkedList[Value]
   Ident* = ref object of Value
     val*: string
-  Usr* = ref object
-    id*: string
+  Usr* = ref object of Value
+    id*: Ident
     term*: seq[Value]
   RuntimeException* = object of Exception
 
@@ -58,6 +58,9 @@ proc newList*(xs: SomeLinkedList[Value]): List =
 
 proc newIdent*(val: string): Ident =
   Ident(val: val)
+
+proc newUsr*(id: Ident, term: seq[Value]): Usr =
+  Usr(id: id, term: term)
 
 method clone*(self: Value): Value {.base.} = self
 

@@ -1,10 +1,14 @@
-import math, tables, strutils, scan, runtime
+import math, tables, strutils, scan, runtime, strformat
 
 type
   Parser = ref object
     s: Scanner
     curTok: Token
     nextTok: Token
+  ParseException* = object of Exception
+
+proc raiseParseError(msg: string) =
+  raise newException(ParseException, msg)
 
 proc advance(p: Parser) =
   p.curTok = p.nextTok
@@ -60,7 +64,7 @@ proc parseNumber(p: Parser): Value =
     p.advance()
     return
   except:
-    raise newException(Exception, "bad numeric");
+    raiseParseError(fmt"bad numeric '{s}'");
 
 proc parseFactor(p: Parser): Value
 
@@ -70,8 +74,9 @@ proc parseList(p: Parser): Value =
   while p.curTok.kind != tkRBrack:
     let fac = p.parseFactor()
     terms.add(fac)
-  if p.curTok.kind == tkRBrack:
-    p.advance()
+  if p.curTok.kind != tkRBrack:
+    raiseParseError(fmt"expected {tkRBrack}")
+  p.advance()
   newList(terms)
 
 proc parseSet(p: Parser): Value =
@@ -81,12 +86,38 @@ proc parseSet(p: Parser): Value =
     let i = parseInt(p.curTok.lexeme)
     s.add(i)
     p.advance()
-  if p.curTok.kind == tkRBrace:
-    p.advance()
+  if p.curTok.kind != tkRBrace:
+    raiseParseError(fmt"expected {tkRBrace}")  
+  p.advance()
   return s
+
+proc parseTerm*(p: Parser): seq[Value] =
+  result = @[]
+  while(p.curTok.kind != tkEOF and p.curTok.kind != tkSemicolon):
+    let fac = p.parseFactor()
+    result.add(fac)
+
+proc parseDef*(p: Parser): Value =
+  if p.curTok.kind != tkColon:
+    raiseParseError(fmt"expected {tkColon}")
+  p.advance()
+  let id = p.parseIdent()
+  let term = p.parseTerm()
+  if p.curTok.kind != tkSemicolon:
+    raiseParseError(fmt"expected {tkSemicolon}")
+  p.advance()
+  newUsr(cast[Ident](id), term)
+
+proc tryParseDef*(p: Parser): (bool, Usr) =
+  try:
+    let x = p.parseDef()
+    return (true, cast[Usr](x))
+  except:
+    return (false, nil)
 
 proc parseFactor(p: Parser): Value =
   case p.curTok.kind
+  of tkColon: p.parseDef()
   of tkLBrack: p.parseList()
   of tkLBrace: p.parseSet()
   of tkNumber: p.parseNumber()
@@ -98,12 +129,6 @@ proc parseFactor(p: Parser): Value =
     # an unterminated literal and it's
     # highly likely we'll be hitting tkEOF
     raise newException(Exception, $p.curTok.kind)
-
-proc parseTerm*(p: Parser): seq[Value] =
-  result = @[]
-  while(p.curTok.kind != tkEOF):
-    let fac = p.parseFactor()
-    result.add(fac)
 
 proc newParser*(s: Scanner): Parser =
   result = new(Parser)
