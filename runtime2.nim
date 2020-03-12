@@ -53,6 +53,9 @@ proc newList*(xs: seq[Value]): List =
   result = newList()
   for x in xs: result.val.append(x)
 
+proc newIdent*(val: string): Ident =
+  Ident(val: val)
+
 template literalEq(t: untyped) =
   method `==`*(a, b: t): bool = a.val == b.val
 
@@ -152,7 +155,7 @@ unFloatOp(exp, exp)
 unFloatOp(sqrt, sqrt)
 
 biFloatOp(`+`, `+`): newInt
-biFloatOp(`-`, `+`): newInt
+biFloatOp(`-`, `-`): newInt
 biFloatOp(`*`, `+`): newInt
 biFloatOp(`/`, `/`): newFloat
 biFloatOp(`rem`, `mod`): newInt

@@ -1,4 +1,4 @@
-import math, tables, strutils, scan, runtime
+import math, tables, strutils, scan, runtime2
 
 type
   Parser = ref object
@@ -75,15 +75,15 @@ proc parseList(p: Parser): Value =
   newList(terms)
 
 proc parseSet(p: Parser): Value =
-  var s = 0
+  var s = newSet(0)
   p.advance()
   while p.curTok.kind != tkRBrace:
     let i = parseInt(p.curTok.lexeme)
-    s = add(s, i)
+    s.add(i)
     p.advance()
   if p.curTok.kind == tkRBrace:
     p.advance()
-  newSet(s)
+  return s
 
 proc parseFactor(p: Parser): Value =
   case p.curTok.kind

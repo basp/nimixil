@@ -8,17 +8,17 @@ type
 
 proc newOp(fn: proc()): Op = Op(fn: fn)
 
-let optable = initTable[string, Op]()
+var optable = initTable[string, Op]()
 
 var 
-  stack = initSinglyLinkedList[Value]()
+  stack* = initSinglyLinkedList[Value]()
   saved = initSinglyLinkedList[Value]()
 
-# method eval*(x: Value) {.base,locks:0.}
+method eval*(x: Value) {.base.}
 
-# proc execterm(p: ListVal) =
-#   for x in p.elements:
-#     eval(x)
+proc execTerm(p: List) =
+  for x in p.val:
+    eval(x)
 
 proc push(x: Value) {.inline.} =
   let node = newSinglyLinkedNode(x)
@@ -33,7 +33,40 @@ proc peek(): Value {.inline.} = stack.head.value
 proc raiseExecError(msg, name: string) =
   raiseRuntimeError(fmt"{msg} needed for `{name}`")
 
-proc opPop() = discard pop()
-proc opPeek() = 
+proc oneParameter(name: string) = 
+  if stack.head == nil:
+    raiseExecError("one parameter", name)
+
+proc twoParameters(name: string) =
+  oneParameter(name)
+  if stack.head.next == nil:
+    raiseExecError("two parameters", name)
+
+proc opPop() = 
+  oneParameter("pop")
+  discard pop()
+
+proc opAdd() =
+  twoParameters("add")
+  let y = pop()
+  let x = pop()
+  push(x + y)
+
+proc opSub() =
+  twoParameters("sub")
+  let y = pop()
+  let x = pop()
+  push(x - y)
+
+optable.add("pop", newOp(opPop))
+optable.add("+", newOp(opAdd))
+optable.add("-", newOp(opSub))
 
 method eval*(x: Value) {.base.} = push(x)
+
+method eval*(x: Ident)  =
+  if optable.hasKey(x.val): 
+    optable[x.val].fn()
+  else:
+    let msg = fmt"undefined symbol `{x.val}`"
+    raiseRuntimeError(msg)

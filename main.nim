@@ -1,4 +1,4 @@
-import lists, scan, parse, interp, runtime
+import lists, scan, parse, interp2
 
 while true:
   stdout.write("< ")
@@ -11,7 +11,7 @@ while true:
       eval(x)
     echo "."
     for x in stack:
-      echo x
+      echo repr(x)
   except Exception:
     let
       e = getCurrentException()
