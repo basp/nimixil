@@ -10,8 +10,6 @@ while true:
     for x in term:
       eval(x)
     echo "."
-    for x in stack:
-      echo x
   except RuntimeException:
     let msg = getCurrentExceptionMsg()
     echo "Runtime error: ", msg
@@ -20,3 +18,6 @@ while true:
       e = getCurrentException()
       msg = getCurrentExceptionMsg()
     echo "Exception: ", repr(e), " with message ", msg
+  finally:
+    for x in stack:
+      echo x

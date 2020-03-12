@@ -190,7 +190,7 @@ method cons*(x: Value, a: Value): Value {.base.} =
   raiseRuntimeError("badargs for `cons`")
 method cons*(x: Value, a: List): Value =
   var b = newList(a.val)
-  b.val.append(x)
+  b.val.prepend(x)
   return b
 method cons*(x: Char, a: String): Value =
   var b = newString(a.val)
