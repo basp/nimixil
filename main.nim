@@ -12,6 +12,9 @@ while true:
     echo "."
     for x in stack:
       echo x
+  except RuntimeException:
+    let msg = getCurrentExceptionMsg()
+    echo "Runtime error: ", msg
   except Exception:
     let
       e = getCurrentException()

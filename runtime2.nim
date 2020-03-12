@@ -23,10 +23,10 @@ type
   Usr* = ref object
     id*: string
     term*: seq[Value]
-  RuntimeError* = object of Exception
+  RuntimeException* = object of Exception
 
 proc raiseRuntimeError*(msg: string) =
-  raise newException(RuntimeError, msg)
+  raise newException(RuntimeException, msg)
 
 proc newBool*(val: bool): Bool =
   Bool(val: val)
@@ -53,7 +53,7 @@ proc newList*(xs: seq[Value]): List =
   result = newList()
   for x in xs: result.val.append(x)
 
-proc newList*(xs: SomeLinkedList[Value]): Value =
+proc newList*(xs: SomeLinkedList[Value]): List =
   List(val: xs)
 
 proc newIdent*(val: string): Ident =
@@ -186,6 +186,21 @@ biLogicOp("and", `and`)
 biLogicOp("or", `or`)
 biLogicOp("xor", `xor`)
 
+method cons*(x: Value, a: Value): Value {.base.} =
+  raiseRuntimeError("badargs for `cons`")
+method cons*(x: Value, a: List): Value =
+  var b = newList(a.val)
+  b.val.append(x)
+  return b
+method cons*(x: Char, a: String): Value =
+  var b = newString(a.val)
+  b.val.insert($x.val)
+  return b
+method cons*(x: Int, a: Set): Value =
+  var b = newSet(a.val)
+  b.add(x)
+  return b
+
 method first*(a: Value): Value {.base.} = 
   raiseRuntimeError("badarg for `first`")
 method first*(a: String): Value = 
@@ -204,4 +219,4 @@ method rest*(a: List): Value =
 method rest*(a: Set): Value =
   let first = toSeq(items(a))[0]
   a.delete(first)
-  a
+  return a

@@ -34,13 +34,25 @@ proc raiseExecError(msg, name: string) =
   raiseRuntimeError(fmt"{msg} needed for `{name}`")
 
 proc oneParameter(name: string) = 
+  const msg = "one parameter"
   if stack.head == nil:
-    raiseExecError("one parameter", name)
+    raiseExecError(msg, name)
 
 proc twoParameters(name: string) =
-  oneParameter(name)
+  const msg = "two parameters"
+  if stack.head == nil:
+    raiseExecError(msg, name)
   if stack.head.next == nil:
-    raiseExecError("two parameters", name)
+    raiseExecError(msg, name)
+
+proc threeParameters(name: string) =
+  const msg = "three parameters"
+  if stack.head == nil:
+    raiseExecError(msg, name)
+  if stack.head.next == nil:
+    raiseExecError(msg, name)
+  if stack.head.next.next == nil:
+    raiseExecError(msg, name)
 
 proc opPop() = 
   oneParameter("pop")
@@ -67,6 +79,12 @@ proc opRest() =
   oneParameter("rest")
   let a = pop()
   push(rest(a))
+
+proc opCons() =
+  twoParameters("cons")
+  let a = pop()
+  let x = pop()
+  push(cons(x, a))
 
 optable.add("pop", newOp(opPop))
 optable.add("+", newOp(opAdd))
