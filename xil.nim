@@ -1,4 +1,4 @@
-import lists, tables, scan, parse, interp, runtime
+import lists, scan, parse, interp, runtime
 
 while true:
   stdout.write("< ")
@@ -8,8 +8,7 @@ while true:
   try:
     var (ok, def) = parser.tryParseDef()
     if ok:
-      deftable.add(def.id.val, def)
-      continue
+      eval(def)
     else:
       let term = parser.parseTerm()
       for x in term: eval(x)

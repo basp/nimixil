@@ -1,4 +1,4 @@
-import lists, sequtils, math, strformat, strutils
+import lists, hashes, sequtils, math, strformat, strutils
 
 const MaxSetSize = 32
 
@@ -22,8 +22,11 @@ type
     val*: string
   Usr* = ref object of Value
     id*: Ident
-    term*: seq[Value]
+    term*: List
   RuntimeException* = object of Exception
+
+proc hash*(x: Ident): Hash = hash(x.val)
+proc `==`*(a, b: Ident): bool = a.val == b.val
 
 proc raiseRuntimeError*(msg: string) =
   raise newException(RuntimeException, msg)
@@ -60,6 +63,9 @@ proc newIdent*(val: string): Ident =
   Ident(val: val)
 
 proc newUsr*(id: Ident, term: seq[Value]): Usr =
+  Usr(id: id, term: newList(term))
+
+proc newUsr*(id: Ident, term: List): Usr =
   Usr(id: id, term: term)
 
 method clone*(self: Value): Value {.base.} = self

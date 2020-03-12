@@ -234,7 +234,9 @@ proc opTimes(name: auto) =
   for t in 0..<n.val:
     execTerm(p)
 
+var usrtable* = initTable[string, Usr]()
 var optable = initTable[string, Op]()
+
 optable.add("id", newOp(opId, "the id function; does nothing"))
 optable.add("dup", newOp(opDup))
 optable.add("pop", newOp(opPop))
@@ -261,13 +263,15 @@ optable.add("times", newOp(opTimes))
 optable.add("i", newOp(opI))
 optable.add("x", newOp(opX))
 
-var deftable* = initTable[string, Usr]()
-
 method eval*(x: Value) {.base.} = push(x)
+
+method eval*(x: Usr) = usrtable[x.id.val] = x  
 
 method eval*(x: Ident) =
   if optable.hasKey(x.val):
     optable[x.val].fn(x.val)
+  elif usrtable.hasKey(x.val):
+    execTerm(usrtable[x.val].term)
   else:
     let msg = fmt"undefined symbol `{x.val}`"
     raiseRuntimeError(msg)

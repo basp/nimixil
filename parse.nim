@@ -91,8 +91,8 @@ proc parseSet(p: Parser): Value =
   p.advance()
   return s
 
-proc parseTerm*(p: Parser): seq[Value] =
-  result = @[]
+proc parseTerm*(p: Parser): List =
+  result = newList()
   while(p.curTok.kind != tkEOF and p.curTok.kind != tkSemicolon):
     let fac = p.parseFactor()
     result.add(fac)
