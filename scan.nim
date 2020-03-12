@@ -120,6 +120,7 @@ proc nextToken*(s: Scanner): Token =
     result.kind = tkEOF
     return
   else:
+    # don't parse a lone `-` character as a number
     if isDigit(s.ch) or (s.ch == '-' and isDigit(s.peek())):
       result.pos = s.pos
       result.lexeme = s.readNumber()

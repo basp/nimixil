@@ -58,9 +58,21 @@ proc opSub() =
   let x = pop()
   push(x - y)
 
+proc opFirst() =
+  oneParameter("first")
+  let a = pop()
+  push(first(a))
+
+proc opRest() =
+  oneParameter("rest")
+  let a = pop()
+  push(rest(a))
+
 optable.add("pop", newOp(opPop))
 optable.add("+", newOp(opAdd))
 optable.add("-", newOp(opSub))
+optable.add("first", newOp(opFirst))
+optable.add("rest", newOp(opRest))
 
 method eval*(x: Value) {.base.} = push(x)
 

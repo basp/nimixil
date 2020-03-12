@@ -1,4 +1,4 @@
-import lists, sequtils, math
+import lists, sequtils, math, strformat, strutils
 
 const MaxSetSize = 32
 
@@ -53,19 +53,16 @@ proc newList*(xs: seq[Value]): List =
   result = newList()
   for x in xs: result.val.append(x)
 
+proc newList*(xs: SomeLinkedList[Value]): Value =
+  List(val: xs)
+
 proc newIdent*(val: string): Ident =
   Ident(val: val)
 
+method `==`*(a, b: Value): bool {.base.} = false
+
 template literalEq(t: untyped) =
   method `==`*(a, b: t): bool = a.val == b.val
-
-method cmp*(a: Value, b: Value): Int {.base, inline.} =
-  raiseRuntimeError("TILT cmp")
-
-# method cmp*(a: IntVal, b: IntVal): IntVal {.inline.} =
-#   newInt(cmp(a.value, b.value))
-
-method `==`*(a, b: Value): bool {.base.} = false
 
 literalEq(Bool)
 literalEq(Char)
@@ -75,16 +72,6 @@ literalEq(String)
 literalEq(Set)
 literalEq(Ident)
 
-method `==`*(a, b: List): bool {.inline.} =
-  var x = a.val.head
-  var y = b.val.head
-  while x != nil and y != nil:
-    if x.value != y.value:
-      return false
-    x = x.next
-    y = y.next
-  true
-
 proc add*(a: Set, x: int) =
   a.val = a.val or (1 shl x)
 
@@ -93,6 +80,9 @@ proc add*(a: Set, x: Int) =
 
 proc add*(a: List, x: Value) =
   a.val.append(x)
+
+proc delete*(a: Set, x: int) =
+  a.val = a.val and not (1 shl x)
 
 proc contains*(a: Set, x: int): bool =
   (a.val and (1 shl x)) > 0
@@ -107,32 +97,56 @@ iterator items*(a: String): char =
   for c in a.val:
     yield c
 
+iterator items*(a: Set): int =
+  for x in 0..<MaxSetSize:
+    if a.contains(x):
+      yield x
+
 iterator items*(a: List): Value =
   var node = a.val.head
   while node != nil:
     yield node.value
     node = node.next
 
-iterator items*(a: Set): int =
-  for x in 0..<MaxSetSize:
-    if a.contains(x):
-      yield x
-
 proc `[]`*(a: String, i: int): char = a[i]
 proc `[]`*(a: Set, i: int): int = toSeq(a.items)[i]
 proc `[]`*(a: List, i: int): Value = toSeq(a.items)[i]
 
-template unFloatOp(op: untyped, fn: untyped) =
+method `$`*(a: Value): string {.base} = repr(a)
+
+template literalStr(t: untyped) =
+  method `$`*(a: t): string = $a.val
+
+literalStr(Bool)
+literalStr(Int)
+literalStr(Float)
+literalStr(List)
+
+method `$`*(a: Char): string = repr(a.val)
+method `$`*(a: String): string = escape(a.val)
+method `$`*(a: Set): string = "{" & join(toSeq(items(a)), " ") & "}"
+
+method `==`*(a, b: List): bool =
+  var x = a.val.head
+  var y = b.val.head
+  while x != nil and y != nil:
+    if x.value != y.value:
+      return false
+    x = x.next
+    y = y.next
+  true
+
+template unFloatOp(name: string, op: untyped, fn: untyped) =
   method op*(a: Value): Value {.base.} =
-    raiseRuntimeError("tilt")
+    raiseRuntimeError("badarg for `" & name & "`")
   method op*(a: Int): Value  =
     newFloat(fn(a.val.float))
   method op*(a: Float): Value =
     newFloat(fn(a.val))
 
-template biFloatOp(op: untyped, fn: untyped, ctor: untyped) =
+template biFloatOp(name: string, op: untyped, fn: untyped, ctor: untyped) =
   method op*(a: Value, b: Value): Value {.base.} =
-    raiseRuntimeError("tilt")
+    raiseRuntimeError("badargs for `" & name & "`")
   method op*(a: Int, b: Int): Value =
     ctor(fn(a.val, b.val))
   method op*(a: Int, b: Float): Value  =
@@ -142,24 +156,52 @@ template biFloatOp(op: untyped, fn: untyped, ctor: untyped) =
   method op*(a: Float, b: Float): Value =
     newFloat(fn(a.val, b.val))
 
-unFloatOp(acos, arcsin)
-unFloatOp(asin, arcsin)
-unFloatOp(atan, arctan)
-unFloatOp(cos, cos)
-unFloatOp(sin, sin)
-unFloatOp(tan, tan)
-unFloatOp(cosh, cosh)
-unFloatOp(sinh, sinh)
-unFloatOp(tanh, tanh)
-unFloatOp(exp, exp)
-unFloatOp(sqrt, sqrt)
+template biLogicOp(name: string, op: untyped) =
+  method op*(a: Value, b: Value): Value {.base.} =
+    raiseRuntimeError("badargs for `" & name & "`")
+  method op*(a: Bool, b: Bool): Value =
+    newBool(op(a.val, b.val))
+  method op*(a: Set, b: Set): Value =
+    newSet(op(a.val, b.val))
 
-biFloatOp(`+`, `+`): newInt
-biFloatOp(`-`, `-`): newInt
-biFloatOp(`*`, `+`): newInt
-biFloatOp(`/`, `/`): newFloat
-biFloatOp(`rem`, `mod`): newInt
+unFloatOp("acos", acos, arcsin)
+unFloatOp("asin", asin, arcsin)
+unFloatOp("atan", atan, arctan)
+unFloatOp("cos", cos, cos)
+unFloatOp("sin", sin, sin)
+unFloatOp("tan", tan, tan)
+unFloatOp("cosh", cosh, cosh)
+unFloatOp("sinh", sinh, sinh)
+unFloatOp("tanh", tanh, tanh)
+unFloatOp("exp", exp, exp)
+unFloatOp("sqrt", sqrt, sqrt)
 
-when isMainModule:
-  echo rem(newInt(3), newInt(2)).repr
-  echo rem(newFloat(0.5), newFloat(0.3)).repr
+biFloatOp("+", `+`, `+`): newInt
+biFloatOp("-", `-`, `-`): newInt
+biFloatOp("*", `*`, `+`): newInt
+biFloatOp("/", `/`, `/`): newFloat
+biFloatOp("rem", `rem`, `mod`): newInt
+
+biLogicOp("and", `and`)
+biLogicOp("or", `or`)
+biLogicOp("xor", `xor`)
+
+method first*(a: Value): Value {.base.} = 
+  raiseRuntimeError("badarg for `first`")
+method first*(a: String): Value = 
+  newChar(a[0])
+method first*(a: Set): Value =
+  newInt(toSeq(items(a))[0])
+method first*(a: List): Value =
+  toSeq(items(a))[0]
+
+method rest*(a: Value): Value {.base.} =
+  raiseRuntimeError("badarg for `rest`")
+method rest*(a: List): Value =
+  var list = initSinglyLinkedList[Value]()
+  list.head = a.val.head.next
+  newList(list)
+method rest*(a: Set): Value =
+  let first = toSeq(items(a))[0]
+  a.delete(first)
+  a
