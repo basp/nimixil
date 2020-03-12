@@ -1,4 +1,4 @@
-import strutils, strformat, math, lists, sequtils, sugar
+import strutils, strformat, math, lists, sequtils
 
 const SETSIZE = 32
 
